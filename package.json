@@ -1,0 +1,48 @@
+{
+  "name": "clevervncclient",
+  "version": "1.2.0",
+  "description": "To be able run your screen monitor as remote desktop from video wall with CLEVER",
+  "main": "index.js",
+  "license": "ISC",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64 --ia32"
+  },
+  "homepage": "www.closed-loop.biz",
+  "author": {
+    "name": "michael-fahmi-clt",
+    "email": "fahmi@closed-loop.biz"
+  },
+  "dependencies": {
+    "@wuild/electron-notification": "^1.0.3",
+    "app": "^0.1.0",
+    "browser-window": "^0.4.0",
+    "date-and-time": "^0.8.1",
+    "electron-log": "^3.0.6",
+    "ip": "^1.1.5",
+    "is-reachable": "^4.0.0",
+    "node-websockify": "^1.0.3",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "electron": "^8.0.0",
+    "electron-builder": "^22.3.2"
+  },
+  "build": {
+    "appId": "vnc.client.app",
+    "productName": "CLEVER - Remote Desktop",
+    "directories": {
+      "output": "build"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "./build/clt.png"
+    },
+    "linux": {
+      "target": "deb",
+      "icon": "./build/clt.png",
+      "category": "AudioVideo",
+      "desktop": "cltsvncapp"
+    }
+  }
+}

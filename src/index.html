@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>CLEVER - Remote Desktop</title>
+
+  <script>
+    if (typeof module === 'object') {
+      window.module = module
+      module = undefined
+    }
+  </script>
+
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script>
+    if (typeof (require) != "undefined") {
+      var ipaddress
+      var {
+        ipcRenderer
+      } = require('electron')
+      var websockify = require('node-websockify')
+      //get local ip address
+      var os = require('os')
+      var ifaces = os.networkInterfaces()
+      Object.keys(ifaces).forEach(function (ifname) {
+        var alias = 0
+
+        ifaces[ifname].forEach(function (iface) {
+          if ('IPv4' !== iface.family || iface.internal !== false) {
+            // skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
+            return
+          }
+
+          if (alias >= 1) {
+            // this single interface has multiple ipv4 addresses
+            console.log(ifname + ':' + alias, iface.address)
+          } else {
+            // this interface has only one ipv4 adress
+            ipaddress = iface.address
+          }
+          ++alias
+        })
+      })
+
+    }
+  </script>
+  <script src="assets/js/jquery.min.js"></script>
+</head>
+
+<body>
+  <article>
+    <section class="experiment" style="text-align: center;margin:5px;">
+      <button id="refresh-screen" disabled class="setup">Stop</button>
+      <button id="share-screen" class="setup child-h">Share</button>
+      <!-- local/remote videos container -->
+    </section>
+  </article>
+</body>
+
+<script>
+  $('#share-screen').click(function () {
+    websockify({
+      target: ipaddress + ':5900',
+      source: '127.0.0.1:8080'
+    })
+    $('#refresh-screen').attr("disabled", false)
+    $('#share-screen').attr("disabled", true)
+    myTrayImg('publish')
+  })
+  
+  $('#refresh-screen').click(function () {
+    myTrayImg('stopped')
+    location.reload()
+  })
+
+  function myTrayImg(icon) {
+    ipcRenderer.send('tray-icon', icon)
+  }
+</script>
+
+</html>
