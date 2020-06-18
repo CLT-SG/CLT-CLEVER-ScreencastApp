@@ -197,7 +197,7 @@ try {
               defaultId: 2,
               title: 'ERROR - 2',
               message: 'Cannot find VNC Server on this computer.',
-              detail: 'Make sure VNC Server is running. You can download at this website\r\n' +
+              detail: 'Make sure VNC Server is running. You can download at this website https://www.tightvnc.com/download.php\r\n' + +
                 '\r\n\r\n' +
                 'Copyright © 2000-' + date.format(now, 'YYYY') + ' by Closed-loop Technology Pte Ltd. All rights reserved \r\n' +
                 ' www.closed-loop.biz'
