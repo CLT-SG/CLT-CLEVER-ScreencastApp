@@ -50,13 +50,19 @@
 </head>
 
 <body>
-  <article>
-    <section class="experiment" style="text-align: center;margin:5px;">
-      <button id="refresh-screen" disabled class="setup">Stop</button>
-      <button id="share-screen" class="setup child-h">Share</button>
-      <!-- local/remote videos container -->
-    </section>
-  </article>
+  <div class="top top-1">CLEVER</div>
+  <div class="top top-2">SCREEN CAST & REMOTE CONTROL</div>
+  <div class="container-config">
+    <div>Server Url :</div>
+    <input type="text" id="url" class="host-input" value="192.168.1.88"></input>
+    <div>Server Port :</div>
+    <input type="text" id="port" class="host-input" value="9100"></input>
+  </div>
+  <div class="container-button">
+    <button id="refresh-screen" disabled class="setup">Stop</button>
+    <button id="share-screen" class="setup child-h">Connect</button>
+    <!-- local/remote videos container -->
+  </div>
 </body>
 
 <script>
@@ -69,7 +75,7 @@
     $('#share-screen').attr("disabled", true)
     myTrayImg('publish')
   })
-  
+
   $('#refresh-screen').click(function () {
     myTrayImg('stopped')
     location.reload()
