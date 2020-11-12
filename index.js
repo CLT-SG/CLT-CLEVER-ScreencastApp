@@ -103,12 +103,11 @@ try {
     //APP START UP CONFIG
     app.on('ready', () => {
       win = new BrowserWindow({
-        //width: 400,
-        //height: 600,
-        width: 800,
-        height: 800,
+        width: 500,
+        height: 580,
         icon: iconPath,
         resizable: false, //false to disable resizable
+        frame: false,
         webPreferences: {
           webSecurity: false,
           enableRemoteModule: true,
@@ -142,20 +141,20 @@ try {
 
       //set icon color
       ipcMain.on('tray-icon', (event, trayimg) => {
-        var titlenotif = "Video Wall Remote Desktop Notification"
+        var titlenotif = "Video Wall Screencast & Remote Desktop Notification"
         if (trayimg == 'publish') {
           appIcon.setImage(publishPath)
-          appIcon.setToolTip('Remote desktop is running.')
+          appIcon.setToolTip('Screencast & Remote desktop is running.')
           appIcon.displayBalloon({
             title: titlenotif,
-            content: 'Remote desktop start to sharing.'
+            content: 'Screencast & Remote desktop start to sharing.'
           })
         } else if (trayimg == 'stopped') {
           appIcon.setImage(iconPath)
           appIcon.setToolTip('Cast not started.')
           appIcon.displayBalloon({
             title: titlenotif,
-            content: 'Remote desktop stop to sharing.'
+            content: 'Screencast & Remote desktop stop to sharing.'
           })
         }
       })

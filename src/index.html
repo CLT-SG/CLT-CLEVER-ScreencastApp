@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-  <title>CLEVER - Remote Desktop</title>
+  <title>CLEVER - Screencast & Remote Desktop</title>
 
   <script>
     if (typeof module === 'object') {
@@ -24,6 +24,7 @@
       var websockify = require('node-websockify')
       var os = require('os')
       var computerName = os.hostname()
+      var customTitlebar = require('custom-electron-titlebar')
       //get local ip address
       var os = require('os')
       var ifaces = os.networkInterfaces()
@@ -116,6 +117,10 @@
   }
 
   $(document).ready(function () {
+    new customTitlebar.Titlebar({
+        backgroundColor: customTitlebar.Color.fromHex('#770055'),
+        maximizable: false
+    })
     $('#reset').on('click', function () {
       $('#url').val('localhost')
       $('#port').val('9100')
