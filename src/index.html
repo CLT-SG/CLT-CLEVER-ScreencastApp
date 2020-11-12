@@ -22,6 +22,8 @@
         ipcRenderer
       } = require('electron')
       var websockify = require('node-websockify')
+      var os = require('os')
+      var computerName = os.hostname()
       //get local ip address
       var os = require('os')
       var ifaces = os.networkInterfaces()
@@ -57,6 +59,7 @@
     <input type="text" id="url" class="host-input" value="192.168.1.88"></input>
     <div>Server Port :</div>
     <input type="text" id="port" class="host-input" value="9100"></input>
+    <button id="reset" class="reset-btn">Reset default</button>
   </div>
   <div class="container-button">
     <button id="refresh-screen" disabled class="setup">Stop</button>
@@ -67,13 +70,40 @@
 
 <script>
   $('#share-screen').click(function () {
-    websockify({
-      target: ipaddress + ':5900',
-      source: '127.0.0.1:8080'
-    })
-    $('#refresh-screen').attr("disabled", false)
-    $('#share-screen').attr("disabled", true)
-    myTrayImg('publish')
+    var host = $('#url').val()
+    var port = $('#port').val()
+    if (host == '') {
+      alert('Please insert Server url')
+    } else if (port == '') {
+      alert('Please insert Server port')
+    } else {
+      localStorage.setItem("host", host)
+      localStorage.setItem("port", port)
+      $('#refresh-screen').attr("disabled", false)
+      $('#share-screen').attr("disabled", true)
+      var hostserver = 'http://' + host + ':' + port + '/castsave'
+
+      websockify({
+        target: ipaddress + ':5900',
+        source: '127.0.0.1:8080'
+      })
+      myTrayImg('publish')
+      $.ajax({
+        url: hostserver,
+        type: "POST",
+        data: {
+          devicename: computerName,
+          ipadd: ipaddress
+        },
+        success: function (data, textStatus, jqXHR) {
+          console.log(data)
+          //data - response from server
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+
+        }
+      });
+    }
   })
 
   $('#refresh-screen').click(function () {
@@ -84,6 +114,24 @@
   function myTrayImg(icon) {
     ipcRenderer.send('tray-icon', icon)
   }
+
+  $(document).ready(function () {
+    $('#reset').on('click', function () {
+      $('#url').val('localhost')
+      $('#port').val('9100')
+    })
+    if (localStorage.getItem("host") === null || localStorage.getItem("host") == '') {
+      $('#url').val('localhost')
+    } else {
+      $('#url').val(localStorage.getItem("host"))
+
+    }
+    if (localStorage.getItem("port") === null || localStorage.getItem("port") == '') {
+      $('#port').val('9100')
+    } else {
+      $('#port').val(localStorage.getItem("port"))
+    }
+  })
 </script>
 
 </html>

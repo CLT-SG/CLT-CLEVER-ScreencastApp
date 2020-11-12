@@ -103,14 +103,16 @@ try {
     //APP START UP CONFIG
     app.on('ready', () => {
       win = new BrowserWindow({
-        width: 400,
-        height: 600,
+        //width: 400,
+        //height: 600,
+        width: 800,
+        height: 800,
         icon: iconPath,
         resizable: false, //false to disable resizable
         webPreferences: {
           webSecurity: false,
           enableRemoteModule: true,
-          devTools: false,
+          devTools: true,
           nodeIntegration: true,
           webSecurity: false,
           zoomFactor: 1
