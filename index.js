@@ -112,7 +112,7 @@ try {
         webPreferences: {
           webSecurity: false,
           enableRemoteModule: true,
-          devTools: true,
+          devTools: false,
           nodeIntegration: true,
           webSecurity: false,
           zoomFactor: 1
