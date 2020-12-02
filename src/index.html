@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-  <title>CLEVER - Screencast & Remote Desktop</title>
+  <title>CLEVER - ScreenCast & Remote Desktop</title>
 
   <script>
     if (typeof module === 'object') {
@@ -19,7 +19,8 @@
     if (typeof (require) != "undefined") {
       var ipaddress
       var {
-        ipcRenderer
+        ipcRenderer,
+        remote
       } = require('electron')
       var websockify = require('node-websockify')
       var os = require('os')
@@ -54,22 +55,27 @@
 
 <body>
   <div class="top top-1">CLEVER</div>
-  <div class="top top-2">SCREEN CAST & REMOTE CONTROL</div>
+  <div class="top top-2">ScreenCast & Remote Desktop</div>
   <div class="container-config">
-    <div>Server Url :</div>
+    <div>Host Address (IP/URL) :</div>
     <input type="text" id="url" class="host-input" value="192.168.1.88"></input>
-    <div>Server Port :</div>
+    <div>Host Port :</div>
     <input type="text" id="port" class="host-input" value="9100"></input>
-    <button id="reset" class="reset-btn">Reset default</button>
+    <button id="reset" class="reset-btn">Reset</button>
   </div>
   <div class="container-button">
     <button id="refresh-screen" disabled class="setup">Stop</button>
-    <button id="share-screen" class="setup child-h">Connect</button>
+    <button id="share-screen" class="setup">Connect</button>
     <!-- local/remote videos container -->
+  </div>
+  <div class="copyright">
+    <img src="assets/images/logo.png" class="clt-logo"></img>
+    <div class="copyright-desc">Copyright © 2000-Present, Closed-loop. All right reserved | Version:</div>
   </div>
 </body>
 
 <script>
+  $('.copyright-desc').text('Copyright © 2000-'+new Date().getFullYear()+', Closed-loop. All right reserved | Version: '+remote.app.getVersion() + ' | www.closed-loop.biz')
   $('#share-screen').click(function () {
     var host = $('#url').val()
     var port = $('#port').val()

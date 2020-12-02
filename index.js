@@ -36,15 +36,11 @@ let appIcon = null
 const template = [
   // { role: 'fileMenu' }
   {
-    label: 'File',
+    label: 'Menu',
     submenu: [{
-      role: 'quit'
-    }]
-  },
-  // { role: 'viewMenu' }
-  {
-    label: 'View',
-    submenu: [{
+        role: 'quit'
+      },
+      {
         role: 'forcereload'
       },
       {
@@ -53,19 +49,16 @@ const template = [
       {
         role: 'toggledevtools'
       },
-    ]
-  },
-  {
-    role: 'help',
-    submenu: [{
-      label: 'Contact Us',
-      click: async () => {
-        const {
-          shell
-        } = require('electron')
-        await shell.openExternal('https://www.closed-loop.biz/contact.html')
+      {
+        label: 'Contact Us',
+        click: async () => {
+          const {
+            shell
+          } = require('electron')
+          await shell.openExternal('https://www.closed-loop.biz/contact.html')
+        }
       }
-    }]
+    ]
   }
 ]
 const gotTheLock = app.requestSingleInstanceLock()
@@ -103,8 +96,8 @@ try {
     //APP START UP CONFIG
     app.on('ready', () => {
       win = new BrowserWindow({
-        width: 500,
-        height: 580,
+        width: 300,
+        height: 460,
         icon: iconPath,
         resizable: false, //false to disable resizable
         frame: false,
