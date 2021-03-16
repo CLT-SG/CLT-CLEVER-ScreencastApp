@@ -37,9 +37,7 @@ const template = [
   // { role: 'fileMenu' }
   {
     label: 'Menu',
-    submenu: [{
-        role: 'quit'
-      },
+    submenu: [
       {
         role: 'forcereload'
       },
@@ -50,12 +48,18 @@ const template = [
         role: 'toggledevtools'
       },
       {
-        label: 'Contact Us',
+        label: 'About',
         click: async () => {
           const {
             shell
           } = require('electron')
           await shell.openExternal('https://www.closed-loop.biz/contact.html')
+        }
+      },
+      {
+        label: 'Check for update',
+        click: async () => {
+          console.log('need to find how to auto update')
         }
       }
     ]
@@ -134,20 +138,20 @@ try {
 
       //set icon color
       ipcMain.on('tray-icon', (event, trayimg) => {
-        var titlenotif = "Video Wall Screencast & Remote Desktop Notification"
+        var titlenotif = "Video Wall Screencast & Virtual Network Control Notification"
         if (trayimg == 'publish') {
           appIcon.setImage(publishPath)
-          appIcon.setToolTip('Screencast & Remote desktop is running.')
+          appIcon.setToolTip('Screencast & Virtual Network Control is running.')
           appIcon.displayBalloon({
             title: titlenotif,
-            content: 'Screencast & Remote desktop start to sharing.'
+            content: 'Screencast & Virtual Network Control start to sharing.'
           })
         } else if (trayimg == 'stopped') {
           appIcon.setImage(iconPath)
           appIcon.setToolTip('Cast not started.')
           appIcon.displayBalloon({
             title: titlenotif,
-            content: 'Screencast & Remote desktop stop to sharing.'
+            content: 'Screencast & Virtual Network Control stop to sharing.'
           })
         }
       })
