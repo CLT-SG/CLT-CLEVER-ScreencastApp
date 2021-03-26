@@ -56,12 +56,16 @@
 <body>
   <div class="top top-1">CLEVER</div>
   <div class="top top-2">ScreenCast & Virtual Network Control</div>
-  <div class="container-config">
+  <!--<div class="container-config">
     <div>Host Address (IP/URL) :</div>
     <input type="text" id="url" class="host-input" value="192.168.1.88"></input>
     <div>Host Port :</div>
     <input type="text" id="port" class="host-input" value="9100"></input>
     <button id="reset" class="reset-btn">Reset</button>
+  </div>-->
+  <div class="container-button">
+    <input type="checkbox" id="auto" class="setup" checked>
+    <label for="auto">Auto connect</label><br>
   </div>
   <div class="container-button">
     <button id="refresh-screen" disabled class="setup">Stop</button>
@@ -75,9 +79,17 @@
 </body>
 
 <script>
-  $('.copyright-desc').text('Copyright © 2000-'+new Date().getFullYear()+', Closed-loop. All right reserved | Version: '+remote.app.getVersion() + ' | www.closed-loop.biz')
+  $('.copyright-desc').text('Copyright © 2000-' + new Date().getFullYear() +
+    ', Closed-loop. All right reserved | Version: ' + remote.app.getVersion() + ' | www.closed-loop.biz')
   $('#share-screen').click(function () {
-    var host = $('#url').val()
+    $('#refresh-screen').attr("disabled", false)
+    $('#share-screen').attr("disabled", true)
+    websockify({
+      target: ipaddress + ':5900',
+      source: '127.0.0.1:8080'
+    })
+    myTrayImg('publish')
+    /*var host = $('#url').val()
     var port = $('#port').val()
     if (host == '') {
       alert('Please insert Server url')
@@ -95,6 +107,7 @@
         source: '127.0.0.1:8080'
       })
       myTrayImg('publish')
+      
       $.ajax({
         url: hostserver,
         type: "POST",
@@ -110,7 +123,7 @@
 
         }
       });
-    }
+    }*/
   })
 
   $('#refresh-screen').click(function () {
@@ -124,8 +137,11 @@
 
   $(document).ready(function () {
     new customTitlebar.Titlebar({
-        backgroundColor: customTitlebar.Color.fromHex('#770055'),
-        maximizable: false
+      backgroundColor: customTitlebar.Color.fromHex('#770055'),
+      maximizable: false,
+      hideWhenClickingClose: true,
+      minimizable: false,
+      titleHorizontalAlignment: 'right'
     })
     $('#reset').on('click', function () {
       $('#url').val('localhost')
@@ -142,6 +158,7 @@
     } else {
       $('#port').val(localStorage.getItem("port"))
     }
+
   })
 </script>
 

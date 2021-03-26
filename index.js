@@ -7,6 +7,7 @@ const {
   Menu,
   Tray
 } = require('electron')
+const isMac = process.platform === 'darwin'
 const path = require('path')
 const fs = require('fs')
 const os = require('os')
@@ -61,7 +62,12 @@ const template = [
         click: async () => {
           console.log('need to find how to auto update')
         }
-      }
+      },
+      (isMac ? {
+        role: 'close'
+      } : {
+        role: 'quit'
+      })
     ]
   }
 ]
@@ -100,6 +106,8 @@ try {
     //APP START UP CONFIG
     app.on('ready', () => {
       win = new BrowserWindow({
+        //width: 800,
+        //height: 600,
         width: 300,
         height: 460,
         icon: iconPath,
@@ -108,7 +116,7 @@ try {
         webPreferences: {
           webSecurity: false,
           enableRemoteModule: true,
-          devTools: false,
+          devTools: true,
           nodeIntegration: true,
           webSecurity: false,
           zoomFactor: 1
