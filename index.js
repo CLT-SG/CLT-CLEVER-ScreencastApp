@@ -108,7 +108,7 @@ try {
       win = new BrowserWindow({
         //width: 800,
         //height: 600,
-        width: 300,
+        width: 350,
         height: 460,
         icon: iconPath,
         resizable: false, //false to disable resizable
@@ -146,20 +146,20 @@ try {
 
       //set icon color
       ipcMain.on('tray-icon', (event, trayimg) => {
-        var titlenotif = "Video Wall Screencast & Virtual Network Control Notification"
+        var titlenotif = "Video Wall Screencast & VNC Notification"
         if (trayimg == 'publish') {
           appIcon.setImage(publishPath)
-          appIcon.setToolTip('Screencast & Virtual Network Control is running.')
+          appIcon.setToolTip('Screencast & VNC is running.')
           appIcon.displayBalloon({
             title: titlenotif,
-            content: 'Screencast & Virtual Network Control start to sharing.'
+            content: 'Screencast & VNC start to sharing.'
           })
         } else if (trayimg == 'stopped') {
           appIcon.setImage(iconPath)
           appIcon.setToolTip('Cast not started.')
           appIcon.displayBalloon({
             title: titlenotif,
-            content: 'Screencast & Virtual Network Control stop to sharing.'
+            content: 'Screencast & VNC stop to sharing.'
           })
         }
       })

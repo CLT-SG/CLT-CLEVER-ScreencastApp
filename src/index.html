@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-  <title>CLEVER - ScreenCast & Virtual Network Control</title>
+  <title>CLEVER - ScreenCast & VNC</title>
 
   <script>
     if (typeof module === 'object') {
@@ -29,6 +29,17 @@
       //get local ip address
       var os = require('os')
       var ifaces = os.networkInterfaces()
+      find().then(devices => {
+        devices
+        /*
+         [
+           { name: '?', ip: '192.168.0.10', mac: '...' },
+           { name: '...', ip: '192.168.0.17', mac: '...' },
+           { name: '...', ip: '192.168.0.21', mac: '...' },
+           { name: '...', ip: '192.168.0.22', mac: '...' }
+         ]
+         */
+      })
       Object.keys(ifaces).forEach(function (ifname) {
         var alias = 0
 
@@ -55,7 +66,7 @@
 
 <body>
   <div class="top top-1">CLEVER</div>
-  <div class="top top-2">ScreenCast & Virtual Network Control</div>
+  <div class="top top-2">ScreenCast & VNC</div>
   <!--<div class="container-config">
     <div>Host Address (IP/URL) :</div>
     <input type="text" id="url" class="host-input" value="192.168.1.88"></input>
@@ -128,7 +139,15 @@
 
   $('#refresh-screen').click(function () {
     myTrayImg('stopped')
-    location.reload()
+    if ($('#auto').is(':checked')) {
+      $("#share-screen").show()
+    }
+    $('#refresh-screen').attr("disabled", true)
+    $('#share-screen').attr("disabled", false)
+    websockify({
+      target: ipaddress + ':6000',
+      source: '127.0.0.1:8080'
+    })
   })
 
   function myTrayImg(icon) {
@@ -158,7 +177,27 @@
     } else {
       $('#port').val(localStorage.getItem("port"))
     }
-
+    if ($('#auto').is(':checked')) {
+      myTrayImg('publish')
+      websockify({
+        target: ipaddress + ':5900',
+        source: '127.0.0.1:8080'
+      })
+      $("#share-screen").hide()
+      $('#refresh-screen').attr("disabled", false)
+    } else {
+      $("#share-screen").show()
+      $('#refresh-screen').attr("disabled", true)
+    }
+    $('#auto').click(function () {
+      $("#share-screen").toggle(!this.checked)
+      if (!this.checked) {
+        $('#refresh-screen').attr("disabled", true)
+      } else {
+        myTrayImg('publish')
+        $('#refresh-screen').attr("disabled", false)
+      }
+    })
   })
 </script>
 

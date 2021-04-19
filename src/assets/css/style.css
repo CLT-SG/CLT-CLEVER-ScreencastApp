@@ -191,16 +191,16 @@ strong {
 }
 
 .window-title {
-  font-size: 0.7em !important;
+  font-size: 0.9em !important;
 }
 
 .menubar {
-  font-size: 0.6em !important;
+  font-size: 0.9em !important;
 }
 
 body .window-controls-container .window-icon-bg .window-icon {
-  -webkit-mask-size: 10% !important;
-  mask-size: 10% !important;
+  -webkit-mask-size: 15% !important;
+  mask-size: 15% !important;
 }
 
 .copyright {
