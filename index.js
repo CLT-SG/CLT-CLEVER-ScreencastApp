@@ -39,15 +39,15 @@ const template = [
   {
     label: 'Menu',
     submenu: [
-      {
-        role: 'forcereload'
-      },
+      //{
+      //  role: 'forcereload'
+      //},
       {
         type: 'separator'
       },
-      {
-        role: 'toggledevtools'
-      },
+      //{
+      // role: 'toggledevtools'
+      //},
       {
         label: 'About',
         click: async () => {
