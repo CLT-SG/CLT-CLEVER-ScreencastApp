@@ -34,32 +34,34 @@
       //get local ip address
       var os = require('os')
       var ifaces = os.networkInterfaces()
-      netList.scan({
-        vendor: false
-      }, (err, devices) => {
-        devices.forEach(function (iplist) {
-          portscanner.findAPortInUse(cleverport, iplist.ip, function (error, status) {
-            // Status is 'open' if currently in use or 'closed' if available
-            console.log(status)
-            var hostserver = 'http://' + iplist.ip + ':' + cleverport + '/castsave'
-            $.ajax({
-              url: hostserver,
-              type: "POST",
-              data: {
-                devicename: computerName,
-                ipadd: ipaddress
-              },
-              success: function (data, textStatus, jqXHR) {
-                console.log(data)
-                //data - response from server
-              },
-              error: function (jqXHR, textStatus, errorThrown) {
+      setInterval(function () {
+        netList.scan({
+          vendor: false
+        }, (err, devices) => {
+          devices.forEach(function (iplist) {
+            portscanner.findAPortInUse(cleverport, iplist.ip, function (error, status) {
+              // Status is 'open' if currently in use or 'closed' if available
+              console.log(status)
+              var hostserver = 'http://' + iplist.ip + ':' + cleverport + '/castsave'
+              $.ajax({
+                url: hostserver,
+                type: "POST",
+                data: {
+                  devicename: computerName,
+                  ipadd: ipaddress
+                },
+                success: function (data, textStatus, jqXHR) {
+                  console.log(data)
+                  //data - response from server
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
 
-              }
-            });
+                }
+              });
+            })
           })
         })
-      })
+      }, 60000)
       Object.keys(ifaces).forEach(function (ifname) {
         var alias = 0
 
@@ -99,6 +101,7 @@
     <label for="auto">Auto connect</label><br>
   </div>
   <div class="container-button">
+    <button id="restart-screen" class="setup">Restart</button>
     <button id="refresh-screen" disabled class="setup">Stop</button>
     <button id="share-screen" class="setup">Connect</button>
     <!-- local/remote videos container -->
@@ -168,6 +171,10 @@
       target: ipaddress + ':6000',
       source: '127.0.0.1:8080'
     })
+  })
+
+  $('#restart-screen').click(function(){
+    location.reload(true);
   })
 
   function myTrayImg(icon) {
