@@ -29,6 +29,8 @@
       const netList = require('network-list')
       const portscanner = require('portscanner')
       const isReachable = require('is-reachable')
+      var nodecmd = require('node-cmd')
+      var cleveraddress
       var cleverport = 9100
       var cleverlist = []
       //get local ip address
@@ -41,7 +43,6 @@
           devices.forEach(function (iplist) {
             portscanner.findAPortInUse(cleverport, iplist.ip, function (error, status) {
               // Status is 'open' if currently in use or 'closed' if available
-              console.log(status)
               var hostserver = 'http://' + iplist.ip + ':' + cleverport + '/castsave'
               $.ajax({
                 url: hostserver,
@@ -57,28 +58,62 @@
                 error: function (jqXHR, textStatus, errorThrown) {
 
                 }
-              });
+              })
             })
           })
         })
       }, 60000)
-      Object.keys(ifaces).forEach(function (ifname) {
-        var alias = 0
+      netList.scan({
+        vendor: false
+      }, (err, devices) => {
+        devices.forEach(function (iplist) {
+          portscanner.findAPortInUse(cleverport, iplist.ip, function (error, status) {
+            // Status is 'open' if currently in use or 'closed' if available
+            var hostserver = 'http://' + iplist.ip + ':' + cleverport + '/castsave'
+            $.ajax({
+              url: hostserver,
+              type: "POST",
+              data: {
+                devicename: computerName,
+                ipadd: ipaddress
+              },
+              success: function (data, textStatus, jqXHR) {
+                //data - response from server
+              },
+              error: function (jqXHR, textStatus, errorThrown) {
 
-        ifaces[ifname].forEach(function (iface) {
-          if ('IPv4' !== iface.family || iface.internal !== false) {
-            // skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
-            return
-          }
+              }
+            })
+            Object.keys(ifaces).forEach(function (ifname) {
+              var alias = 0
 
-          if (alias >= 1) {
-            // this single interface has multiple ipv4 addresses
-            console.log(ifname + ':' + alias, iface.address)
-          } else {
-            // this interface has only one ipv4 adress
-            ipaddress = iface.address
-          }
-          ++alias
+              ifaces[ifname].forEach(function (iface) {
+                if ('IPv4' !== iface.family || iface.internal !== false) {
+                  // skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
+                  return
+                }
+
+                if (alias >= 1) {
+                  // this single interface has multiple ipv4 addresses
+                  console.log(ifname + ':' + alias, iface.address)
+                } else {
+                  // this interface has only one ipv4 adress
+                  ipaddress = iface.address
+                  const syncData = nodecmd.run(
+                    'ffmpeg -f dshow -i video="screen-capture-recorder" ' +
+                    '-vcodec libx264 -r 35 -acodec libvo_aacenc -ac 2 ' +
+                    '-ar 44100 -ab 128k -pix_fmt yuv420p -tune zerolatency ' +
+                    '-preset ultrafast -f flv "rtmp://' + iplist.ip + ':1935/screencast/' + ipaddress + '"',
+                    function (err, data, stderr) {
+                      console.log('data : ', data)
+                      console.log('err : ', err)
+                      console.log('stderr : ', stderr)
+                    })
+                }
+                ++alias
+              })
+            })
+          })
         })
       })
     }
@@ -173,7 +208,7 @@
     })
   })
 
-  $('#restart-screen').click(function(){
+  $('#restart-screen').click(function () {
     location.reload(true);
   })
 
