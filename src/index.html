@@ -30,6 +30,7 @@
       const portscanner = require('portscanner')
       const isReachable = require('is-reachable')
       var nodecmd = require('node-cmd')
+      const path = require('path')
       var cleveraddress
       var cleverport = 9100
       var cleverlist = []
@@ -72,21 +73,20 @@
                 } else {
                   // this interface has only one ipv4 adress
                   ipaddress = iface.address
-                  console.log('my ip : ' + ipaddress)
-                  console.log('clever ip : ' + iplist.ip)
+                  nodotip = ipaddress.split('.').join("")
+                  var pathdir = process.env.PORTABLE_EXECUTABLE_DIR || path.join(__dirname, '../')
                   const syncData = nodecmd.run(
-                      'ffmpeg -f dshow -i video="screen-capture-recorder" ' +
-                      '-vcodec libx264 -r 35 -acodec libvo_aacenc -ac 2 ' +
-                      '-ar 44100 -ab 128k -pix_fmt yuv420p -tune zerolatency ' +
-                      '-preset ultrafast -f flv "rtmp://' + iplist.ip + ':1935/screencast/' +
-                      ipaddress + '"',
-                      function (err, data, stderr) {
-                        console.log('data : ', data)
-                        console.log('err : ', err)
-                        console.log('stderr : ', stderr)
-                      })
-                    ++alias
+                    pathdir + '/ffmpeg/bin/ffmpeg -re -f dshow -i video="screen-capture-recorder" ' +
+                    '-vcodec libx264 -r 35 -acodec libvo_aacenc -ac 2 ' +
+                    '-ar 44100 -pix_fmt yuv420p -tune zerolatency ' +
+                    '-preset ultrafast -f flv "rtmp://' + iplist.ip + ':1935/screencast/' +
+                    nodotip + '"',
+                    function (err, data, stderr) {
+                      console.log('data : ', data)
+                      console.log('stderr : ', stderr)
+                    })
                 }
+                ++alias
               })
             })
           })
@@ -180,7 +180,7 @@
     $('#share-screen').attr("disabled", false)
     websockify({
       target: ipaddress + ':6000',
-      source: '127.0.0.1:8080'
+      source: '127.0.0.1:9090'
     })
   })
 
