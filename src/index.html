@@ -36,33 +36,6 @@
       //get local ip address
       var os = require('os')
       var ifaces = os.networkInterfaces()
-      setInterval(function () {
-        netList.scan({
-          vendor: false
-        }, (err, devices) => {
-          devices.forEach(function (iplist) {
-            portscanner.findAPortInUse(cleverport, iplist.ip, function (error, status) {
-              // Status is 'open' if currently in use or 'closed' if available
-              var hostserver = 'http://' + iplist.ip + ':' + cleverport + '/castsave'
-              $.ajax({
-                url: hostserver,
-                type: "POST",
-                data: {
-                  devicename: computerName,
-                  ipadd: ipaddress
-                },
-                success: function (data, textStatus, jqXHR) {
-                  //console.log(data)
-                  //data - response from server
-                },
-                error: function (jqXHR, textStatus, errorThrown) {
-
-                }
-              })
-            })
-          })
-        })
-      }, 60000)
       netList.scan({
         vendor: false
       }, (err, devices) => {
@@ -88,7 +61,7 @@
               var alias = 0
 
               ifaces[ifname].forEach(function (iface) {
-                if ('IPv4' !== iface.family || iface.internal !== false) {
+                if ('IPv4' !== iface.family || iface.internal !== false || iface.address == '192.168.1.253') {
                   // skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
                   return
                 }
