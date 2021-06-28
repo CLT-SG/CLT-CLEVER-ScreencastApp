@@ -52,7 +52,7 @@
                   ipadd: ipaddress
                 },
                 success: function (data, textStatus, jqXHR) {
-                  console.log(data)
+                  //console.log(data)
                   //data - response from server
                 },
                 error: function (jqXHR, textStatus, errorThrown) {
@@ -95,10 +95,12 @@
 
                 if (alias >= 1) {
                   // this single interface has multiple ipv4 addresses
-                  console.log(ifname + ':' + alias, iface.address)
+                  //console.log(ifname + ':' + alias, iface.address)
                 } else {
                   // this interface has only one ipv4 adress
                   ipaddress = iface.address
+                  console.log('my ip : ' + ipaddress)
+                  console.log('clever ip : ' + iplist.ip)
                   const syncData = nodecmd.run(
                     'ffmpeg -f dshow -i video="screen-capture-recorder" ' +
                     '-vcodec libx264 -r 35 -acodec libvo_aacenc -ac 2 ' +
