@@ -75,17 +75,18 @@
                   console.log('my ip : ' + ipaddress)
                   console.log('clever ip : ' + iplist.ip)
                   const syncData = nodecmd.run(
-                    'ffmpeg -f dshow -i video="screen-capture-recorder" ' +
-                    '-vcodec libx264 -r 35 -acodec libvo_aacenc -ac 2 ' +
-                    '-ar 44100 -ab 128k -pix_fmt yuv420p -tune zerolatency ' +
-                    '-preset ultrafast -f flv "rtmp://' + iplist.ip + ':1935/screencast/' + ipaddress + '"',
-                    function (err, data, stderr) {
-                      console.log('data : ', data)
-                      console.log('err : ', err)
-                      console.log('stderr : ', stderr)
-                    })
+                      'ffmpeg -f dshow -i video="screen-capture-recorder" ' +
+                      '-vcodec libx264 -r 35 -acodec libvo_aacenc -ac 2 ' +
+                      '-ar 44100 -ab 128k -pix_fmt yuv420p -tune zerolatency ' +
+                      '-preset ultrafast -f flv "rtmp://' + iplist.ip + ':1935/screencast/' +
+                      ipaddress + '"',
+                      function (err, data, stderr) {
+                        console.log('data : ', data)
+                        console.log('err : ', err)
+                        console.log('stderr : ', stderr)
+                      })
+                    ++alias
                 }
-                ++alias
               })
             })
           })
