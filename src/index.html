@@ -24,6 +24,7 @@
       } = require('electron')
       var websockify = require('node-websockify')
       var os = require('os')
+      var process = require('process')
       var computerName = os.hostname()
       var customTitlebar = require('custom-electron-titlebar')
       const netList = require('network-list')
@@ -62,8 +63,9 @@
               }
             })
             var nodotip = ipaddress.split('.').join("")
-            var pathdir = process.env.PORTABLE_EXECUTABLE_DIR || __dirname
-            pathdir = path.join(pathdir, '../')
+            var pathdir = process.env.PORTABLE_EXECUTABLE_DIR || process.cwd()
+            console.log(pathdir)
+            //pathdir = path.join(pathdir, '../')
             const syncData = nodecmd.run(
               pathdir + '/ffmpeg/bin/ffmpeg -re -f dshow -i video="screen-capture-recorder" ' +
               '-vcodec libx264 -r 35 -acodec libvo_aacenc -ac 2 ' +
