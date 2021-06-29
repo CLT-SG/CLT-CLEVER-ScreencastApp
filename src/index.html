@@ -42,6 +42,9 @@
       }, (err, devices) => {
         devices.forEach(function (iplist) {
           portscanner.findAPortInUse(cleverport, iplist.ip, function (error, status) {
+            if (iplist.ip == '192.168.1.253'){
+              return
+            }
             // Status is 'open' if currently in use or 'closed' if available
             var hostserver = 'http://' + iplist.ip + ':' + cleverport + '/castsave'
             $.ajax({
@@ -58,38 +61,37 @@
 
               }
             })
-            Object.keys(ifaces).forEach(function (ifname) {
-              var alias = 0
-
-              ifaces[ifname].forEach(function (iface) {
-                if ('IPv4' !== iface.family || iface.internal !== false) {
-                  // skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
-                  return
-                }
-
-                if (alias >= 1 || iplist.ip == '192.168.1.253') {
-                  // this single interface has multiple ipv4 addresses
-                  //console.log(ifname + ':' + alias, iface.address)
-                } else {
-                  // this interface has only one ipv4 adress
-                  ipaddress = iface.address
-                  nodotip = ipaddress.split('.').join("")
-                  var pathdir = process.env.PORTABLE_EXECUTABLE_DIR || path.join(__dirname, '../')
-                  const syncData = nodecmd.run(
-                    pathdir + '/ffmpeg/bin/ffmpeg -re -f dshow -i video="screen-capture-recorder" ' +
-                    '-vcodec libx264 -r 35 -acodec libvo_aacenc -ac 2 ' +
-                    '-ar 44100 -pix_fmt yuv420p -tune zerolatency ' +
-                    '-preset ultrafast -f flv "rtmp://' + iplist.ip + ':1935/screencast/' +
-                    nodotip + '"',
-                    function (err, data, stderr) {
-                      console.log('data : ', data)
-                      console.log('stderr : ', stderr)
-                    })
-                }
-                ++alias
+            var nodotip = ipaddress.split('.').join("")
+            var pathdir = process.env.PORTABLE_EXECUTABLE_DIR || __dirname
+            pathdir = path.join(pathdir, '../')
+            const syncData = nodecmd.run(
+              pathdir + '/ffmpeg/bin/ffmpeg -re -f dshow -i video="screen-capture-recorder" ' +
+              '-vcodec libx264 -r 35 -acodec libvo_aacenc -ac 2 ' +
+              '-ar 44100 -pix_fmt yuv420p -tune zerolatency ' +
+              '-preset ultrafast -f flv "rtmp://' + iplist.ip + ':1935/screencast/' +
+              nodotip + '"',
+              function (err, data, stderr) {
+                console.log('data : ', data)
+                console.log('stderr : ', stderr)
               })
-            })
           })
+        })
+      })
+      Object.keys(ifaces).forEach(function (ifname) {
+        var alias = 0
+        ifaces[ifname].forEach(function (iface) {
+          if ('IPv4' !== iface.family || iface.internal !== false) {
+            // skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
+            return
+          }
+          if (alias >= 1) {
+            // this single interface has multiple ipv4 addresses
+            //console.log(ifname + ':' + alias, iface.address)
+          } else {
+            // this interface has only one ipv4 adress
+            ipaddress = iface.address
+          }
+          ++alias
         })
       })
     }
@@ -100,13 +102,6 @@
 <body>
   <div class="top top-1">CLEVER</div>
   <div class="top top-2">ScreenCast & VNC</div>
-  <!--<div class="container-config">
-    <div>Host Address (IP/URL) :</div>
-    <input type="text" id="url" class="host-input" value="192.168.1.88"></input>
-    <div>Host Port :</div>
-    <input type="text" id="port" class="host-input" value="9100"></input>
-    <button id="reset" class="reset-btn">Reset</button>
-  </div>-->
   <div class="container-button">
     <input type="checkbox" id="auto" class="setup" checked>
     <label for="auto">Auto connect</label><br>
@@ -134,41 +129,6 @@
       source: '127.0.0.1:8080'
     })
     myTrayImg('publish')
-    /*var host = $('#url').val()
-    var port = $('#port').val()
-    if (host == '') {
-      alert('Please insert Server url')
-    } else if (port == '') {
-      alert('Please insert Server port')
-    } else {
-      localStorage.setItem("host", host)
-      localStorage.setItem("port", port)
-      $('#refresh-screen').attr("disabled", false)
-      $('#share-screen').attr("disabled", true)
-      var hostserver = 'http://' + host + ':' + port + '/castsave'
-
-      websockify({
-        target: ipaddress + ':5900',
-        source: '127.0.0.1:8080'
-      })
-      myTrayImg('publish')
-      
-      $.ajax({
-        url: hostserver,
-        type: "POST",
-        data: {
-          devicename: computerName,
-          ipadd: ipaddress
-        },
-        success: function (data, textStatus, jqXHR) {
-          console.log(data)
-          //data - response from server
-        },
-        error: function (jqXHR, textStatus, errorThrown) {
-
-        }
-      });
-    }*/
   })
 
   $('#refresh-screen').click(function () {
@@ -216,6 +176,11 @@
       $('#port').val(localStorage.getItem("port"))
     }
     if ($('#auto').is(':checked')) {
+      console.log('dalam checked : ' + ipaddress)
+      websockify({
+        target: ipaddress + ':5900',
+        source: '127.0.0.1:8080'
+      })
       myTrayImg('publish')
       websockify({
         target: ipaddress + ':5900',

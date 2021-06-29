@@ -45,9 +45,9 @@ const template = [
       {
         type: 'separator'
       },
-      {
-       role: 'toggledevtools'
-      },
+      //{
+      // role: 'toggledevtools'
+      //},
       {
         label: 'About',
         click: async () => {
@@ -106,17 +106,17 @@ try {
     //APP START UP CONFIG
     app.on('ready', () => {
       win = new BrowserWindow({
-        width: 800,
-        height: 600,
-        //width: 350,
-        //height: 460,
+        //width: 800,
+        //height: 600,
+        width: 350,
+        height: 460,
         icon: iconPath,
         resizable: false, //false to disable resizable
         frame: false,
         webPreferences: {
           webSecurity: false,
           enableRemoteModule: true,
-          devTools: true,
+          devTools: false,
           nodeIntegration: true,
           webSecurity: false,
           zoomFactor: 1
