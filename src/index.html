@@ -179,10 +179,6 @@
     }
     if ($('#auto').is(':checked')) {
       console.log('dalam checked : ' + ipaddress)
-      websockify({
-        target: ipaddress + ':5900',
-        source: '127.0.0.1:8080'
-      })
       myTrayImg('publish')
       websockify({
         target: ipaddress + ':5900',
