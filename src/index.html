@@ -19,6 +19,7 @@
     if (typeof (require) != "undefined") {
       var ipaddress
       var {
+        app,
         ipcRenderer,
         remote
       } = require('electron')
@@ -31,6 +32,16 @@
       const portscanner = require('portscanner')
       const isReachable = require('is-reachable')
       var nodecmd = require('node-cmd')
+      var syncData
+      var AutoLaunch = require('auto-launch')
+      //auto launch config
+      var appLaunch = new AutoLaunch({
+        name: 'CLEVER - Screencast & VNC',
+        path: process.env.PORTABLE_EXECUTABLE_DIR || process.cwd(),
+      })
+      //killprocess name
+      var killProcess = require('kill-process-by-name')
+      killProcess('ffmpeg')
       const path = require('path')
       var cleveraddress
       var cleverport = 9100
@@ -43,7 +54,7 @@
       }, (err, devices) => {
         devices.forEach(function (iplist) {
           portscanner.findAPortInUse(cleverport, iplist.ip, function (error, status) {
-            if (iplist.ip == '192.168.1.253'){
+            if (iplist.ip == '192.168.1.253') {
               return
             }
             // Status is 'open' if currently in use or 'closed' if available
@@ -64,17 +75,20 @@
             })
             var nodotip = ipaddress.split('.').join("")
             var pathdir = process.env.PORTABLE_EXECUTABLE_DIR || process.cwd()
-            console.log(pathdir)
+            var pathdir = process.env.PORTABLE_EXECUTABLE_DIR || process.cwd()
             //pathdir = path.join(pathdir, '../')
-            const syncData = nodecmd.run(
-              pathdir + '/ffmpeg/bin/ffmpeg -re -f dshow -i video="screen-capture-recorder" ' +
-              '-vcodec libx264 -r 35 -acodec libvo_aacenc -ac 2 ' +
-              '-ar 44100 -pix_fmt yuv420p -tune zerolatency ' +
-              '-preset ultrafast -f flv "rtmp://' + iplist.ip + ':1935/screencast/' +
+            //https://flashphoner.com/screensharing-from-ffmpeg-to-webrtc/
+            console.log('Cast Started')
+            syncData = nodecmd.run(
+              'ffmpeg -f gdigrab -rtbufsize 100M -framerate 30 ' +
+              '-probesize 30M -draw_mouse 1 -i desktop -c:v libx264 -r 30 ' +
+              '-preset ultrafast -tune zerolatency -crf 0 -pix_fmt yuv420p ' +
+              '-f flv "rtmp://' + iplist.ip + ':1935/screencast/' +
               nodotip + '"',
               function (err, data, stderr) {
-                console.log('data : ', data)
-                console.log('stderr : ', stderr)
+                castRun(iplist.ip, nodotip)
+                //console.log('data : ', data)
+                //console.log('stderr : ', stderr)
               })
           })
         })
@@ -97,6 +111,21 @@
         })
       })
     }
+
+    function castRun(ip, myid){
+      console.log('Cast Started')
+      syncData = nodecmd.run(
+              'ffmpeg -f gdigrab -rtbufsize 100M -framerate 30 ' +
+              '-probesize 30M -draw_mouse 1 -i desktop -c:v libx264 -r 30 ' +
+              '-preset ultrafast -tune zerolatency -crf 0 -pix_fmt yuv420p ' +
+              '-f flv "rtmp://' + ip + ':1935/screencast/' +
+              myid + '"',
+              function (err, data, stderr) {
+                castRun(ip, myid)
+                //console.log('data : ', data)
+                //console.log('stderr : ', stderr)
+              })
+    }
   </script>
   <script src="assets/js/jquery.min.js"></script>
 </head>
@@ -105,13 +134,15 @@
   <div class="top top-1">CLEVER</div>
   <div class="top top-2">ScreenCast & VNC</div>
   <div class="container-button">
-    <input type="checkbox" id="auto" class="setup" checked>
-    <label for="auto">Auto connect</label><br>
+    <input type="checkbox" id="auto" class="setup-chkbx" checked>
+    <label for="auto" style="font-size:115%;display:inline;">Auto connect</label><br>
+    <input type="checkbox" id="startup" class="setup-chkbx">
+    <label for="startup" style="font-size:115%;display:inline;">Start ScreenCast with Windows</label><br>
   </div>
   <div class="container-button">
-    <button id="restart-screen" class="setup">Restart</button>
-    <button id="refresh-screen" disabled class="setup">Stop</button>
-    <button id="share-screen" class="setup">Connect</button>
+    <button id="restart-screen" class="setup smaller">Restart</button>
+    <button id="refresh-screen" disabled class="setup smaller">Stop</button>
+    <button id="share-screen" class="setup smaller">Connect</button>
     <!-- local/remote videos container -->
   </div>
   <div class="copyright">
@@ -124,17 +155,23 @@
   $('.copyright-desc').text('Copyright © 2000-' + new Date().getFullYear() +
     ', Closed-loop. All right reserved | Version: ' + remote.app.getVersion() + ' | www.closed-loop.biz')
   $('#share-screen').click(function () {
-    $('#refresh-screen').attr("disabled", false)
+    $('#share-screen').hide()
+    $('#refresh-screen').show()
+    myTrayImg('publish')
+    /*$('#refresh-screen').attr("disabled", false)
     $('#share-screen').attr("disabled", true)
     websockify({
       target: ipaddress + ':5900',
       source: '127.0.0.1:8080'
     })
-    myTrayImg('publish')
+    myTrayImg('publish')*/
   })
 
   $('#refresh-screen').click(function () {
+    $('#refresh-screen').hide()
+    $('#share-screen').show()
     myTrayImg('stopped')
+    /*myTrayImg('stopped')
     if ($('#auto').is(':checked')) {
       $("#share-screen").show()
     }
@@ -143,11 +180,11 @@
     websockify({
       target: ipaddress + ':6000',
       source: '127.0.0.1:9090'
-    })
+    })*/
   })
 
   $('#restart-screen').click(function () {
-    location.reload(true);
+    location.reload(true)
   })
 
   function myTrayImg(icon) {
@@ -178,7 +215,6 @@
       $('#port').val(localStorage.getItem("port"))
     }
     if ($('#auto').is(':checked')) {
-      console.log('dalam checked : ' + ipaddress)
       myTrayImg('publish')
       websockify({
         target: ipaddress + ':5900',
@@ -191,12 +227,27 @@
       $('#refresh-screen').attr("disabled", true)
     }
     $('#auto').click(function () {
-      $("#share-screen").toggle(!this.checked)
       if (!this.checked) {
-        $('#refresh-screen').attr("disabled", true)
+        $("#share-screen").show()
+        $('#refresh-screen').hide()
       } else {
         myTrayImg('publish')
-        $('#refresh-screen').attr("disabled", false)
+        $("#share-screen").hide()
+        $('#refresh-screen').show()
+      }
+    })
+    if (localStorage.getItem("startup") == "on") {
+      $('#startup').prop('checked', true)
+    } else {
+      $('#startup').prop('checked', false)
+    }
+    $('#startup').click(function () {
+      if (!this.checked) {
+        appLaunch.disable()
+        localStorage.setItem("startup", "off")
+      } else {
+        appLaunch.enable()
+        localStorage.setItem("startup", "on")
       }
     })
   })

@@ -158,6 +158,25 @@ strong {
 }
 
 .setup {
+  margin: 0 5px 0 5px;
+  padding: 5px;
+}
+
+.smaller {
+  -ms-transform: scale(0.8); /* IE */
+  -moz-transform: scale(0.8); /* FF */
+  -webkit-transform: scale(0.8); /* Safari and Chrome */
+  -o-transform: scale(0.8); /* Opera */
+  transform: scale(0.8);
+  font-size: 0.5;
+}
+
+.setup-chkbx {
+  -ms-transform: scale(1.5); /* IE */
+  -moz-transform: scale(1.5); /* FF */
+  -webkit-transform: scale(1.5); /* Safari and Chrome */
+  -o-transform: scale(1.5); /* Opera */
+  transform: scale(1.5);
   margin: 0 15px 0 15px;
   padding: 10px;
 }
