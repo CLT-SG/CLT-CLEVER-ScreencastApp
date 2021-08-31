@@ -30,8 +30,8 @@
       var customTitlebar = require('custom-electron-titlebar')
       const netList = require('network-list')
       const portscanner = require('portscanner')
-      const isReachable = require('is-reachable')
-      var nodecmd = require('node-cmd')
+      //const isReachable = require('is-reachable')
+      //var nodecmd = require('node-cmd')
       var syncData
       var AutoLaunch = require('auto-launch')
       //auto launch config
@@ -79,7 +79,8 @@
             //pathdir = path.join(pathdir, '../')
             //https://flashphoner.com/screensharing-from-ffmpeg-to-webrtc/
             console.log('Cast Started')
-            syncData = nodecmd.run(
+            //run screencast with ffmpeg
+            /*syncData = nodecmd.run(
               'ffmpeg -f gdigrab -rtbufsize 100M -framerate 30 ' +
               '-probesize 30M -draw_mouse 1 -i desktop -c:v libx264 -r 30 ' +
               '-preset ultrafast -tune zerolatency -crf 0 -pix_fmt yuv420p ' +
@@ -89,7 +90,7 @@
                 castRun(iplist.ip, nodotip)
                 //console.log('data : ', data)
                 //console.log('stderr : ', stderr)
-              })
+              })*/
           })
         })
       })
@@ -112,7 +113,7 @@
       })
     }
 
-    function castRun(ip, myid){
+    /*function castRun(ip, myid){
       console.log('Cast Started')
       syncData = nodecmd.run(
               'ffmpeg -f gdigrab -rtbufsize 100M -framerate 30 ' +
@@ -125,7 +126,7 @@
                 //console.log('data : ', data)
                 //console.log('stderr : ', stderr)
               })
-    }
+    }*/
   </script>
   <script src="assets/js/jquery.min.js"></script>
 </head>
