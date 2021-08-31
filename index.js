@@ -167,6 +167,7 @@ try {
       appIcon.on('double-click', () => {
         win.show()
       })
+
       win.on('close', function (event) {
         win = null
       })
@@ -178,6 +179,16 @@ try {
       //win CONFIG
       win.on('closed', () => {
         win = null
+      })
+
+      //auto hide
+      setTimeout(function(){
+        win.hide()
+      },5000)
+      
+      //SHORTCUT KEY
+      globalShortcut.register('CommandOrControl+D', () => {
+        win.openDevTools()
       })
 
       //CLEAR CACHE AND COOKIE EVERY STARTUP

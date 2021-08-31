@@ -19,7 +19,6 @@
     if (typeof (require) != "undefined") {
       var ipaddress
       var {
-        app,
         ipcRenderer,
         remote
       } = require('electron')
@@ -33,15 +32,15 @@
       //const isReachable = require('is-reachable')
       //var nodecmd = require('node-cmd')
       var syncData
-      var AutoLaunch = require('auto-launch')
+      //var AutoLaunch = require('auto-launch')
       //auto launch config
-      var appLaunch = new AutoLaunch({
-        name: 'CLEVER - Screencast & VNC',
-        path: process.env.PORTABLE_EXECUTABLE_DIR || process.cwd(),
-      })
+      //var appLaunch = new AutoLaunch({
+      //  name: 'CLEVER - Screencast & VNC',
+      //  path: process.env.PORTABLE_EXECUTABLE_DIR || process.cwd(),
+      //})
       //killprocess name
-      var killProcess = require('kill-process-by-name')
-      killProcess('ffmpeg')
+      //var killProcess = require('kill-process-by-name')
+      //killProcess('ffmpeg')
       const path = require('path')
       var cleveraddress
       var cleverport = 9100
