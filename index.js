@@ -116,7 +116,7 @@ try {
         webPreferences: {
           webSecurity: false,
           enableRemoteModule: true,
-          devTools: false,
+          devTools: true,
           nodeIntegration: true,
           webSecurity: false,
           zoomFactor: 1
