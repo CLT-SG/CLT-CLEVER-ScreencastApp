@@ -34,6 +34,7 @@ if (!fs.existsSync(logdir)) {
 //One instance process check
 let win = null
 let appIcon = null
+var autorload
 const template = [
   // { role: 'fileMenu' }
   {
@@ -42,6 +43,57 @@ const template = [
       //{
       //  role: 'forcereload'
       //},
+      {
+        label: 'Auto restart',
+        submenu: [
+          {
+            label: "30 min",
+            type: "radio",
+            checked: true,
+            click: e => {
+              if (autorload) { clearInterval(autoreload) }
+              if (e.checked) {
+                autorload = setInterval(function () {
+                  console.log('3hour')
+                  //win.webContents.reloadIgnoringCache()
+                  win.webContents.session.clearCache()
+                }, 1800000
+                )
+              }
+            }
+          },
+          {
+            label: "1 hour",
+            type: "radio",
+            click: e => {
+              if (autorload) { clearInterval(autoreload) }
+              if (e.checked) {
+                autorload = setInterval(function () {
+                  console.log('6hour')
+                  //win.webContents.reloadIgnoringCache()
+                  win.webContents.session.clearCache()
+                }, 3600000
+                )
+              }
+            }
+          },
+          {
+            label: "3 hour",
+            type: "radio",
+            click: e => {
+              if (autorload) { clearInterval(autoreload) }
+              if (e.checked) {
+                autorload = setInterval(function () {
+                  console.log('9hour')
+                  //win.webContents.reloadIgnoringCache()
+                  win.webContents.session.clearCache()
+                }, 10800000
+                )
+              }
+            }
+          }
+        ]
+      },
       {
         type: 'separator'
       },
@@ -130,18 +182,18 @@ try {
       //Tray Settings
       appIcon = new Tray(iconPath)
       var contextMenu = Menu.buildFromTemplate([{
-          label: 'Show App',
-          click: function () {
-            win.show()
-          }
-        },
-        {
-          label: 'Quit',
-          click: function () {
-            app.isQuiting = true
-            app.quit()
-          }
+        label: 'Show App',
+        click: function () {
+          win.show()
         }
+      },
+      {
+        label: 'Quit',
+        click: function () {
+          app.isQuiting = true
+          app.quit()
+        }
+      }
       ])
 
       //set icon color
@@ -168,6 +220,13 @@ try {
         win.show()
       })
 
+      autorload = setInterval(function () {
+        console.log('30 mins')
+        //win.webContents.reloadIgnoringCache()
+        win.webContents.session.clearCache()
+      }, 1800000
+      )
+
       win.on('close', function (event) {
         win = null
       })
@@ -182,10 +241,10 @@ try {
       })
 
       //auto hide
-      setTimeout(function(){
+      setTimeout(function () {
         win.hide()
-      },5000)
-      
+      }, 5000)
+
       //SHORTCUT KEY
       globalShortcut.register('CommandOrControl+D', () => {
         win.openDevTools()
