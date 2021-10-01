@@ -35,6 +35,9 @@ if (!fs.existsSync(logdir)) {
 let win = null
 let appIcon = null
 var autorload
+
+var vncport = (process.platform == 'linux') ? '5901' : '5900'
+
 const template = [
   // { role: 'fileMenu' }
   {
@@ -259,7 +262,7 @@ try {
       var status
       //check url status and open
       (async () => {
-        await isReachable('127.0.0.1:5900', {
+        await isReachable('127.0.0.1:' + vncport, {
           timeout: 10000
         }).then((status) => {
           if (status == true) {
