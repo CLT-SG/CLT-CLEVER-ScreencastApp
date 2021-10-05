@@ -36,7 +36,7 @@ let win = null
 let appIcon = null
 var autorload
 
-var vncport = (process.platform == 'linux') ? '5901' : '5900'
+var vncport = (process.platform == 'linux') ? '5900' : '5900'
 
 const template = [
   // { role: 'fileMenu' }
