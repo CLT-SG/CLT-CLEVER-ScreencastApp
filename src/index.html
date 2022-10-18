@@ -20,30 +20,18 @@
   <script>
     if (typeof (require) != "undefined") {
       var ipaddress
+      var rtAudio
       var {
         ipcRenderer,
         remote
       } = require('electron')
-      var websockify = require('node-websockify')
+      var fs = require('fs')
+      var path = require('path')
       var os = require('os')
-      var process = require('process')
+      var moment = require('moment')
       var computerName = os.hostname()
       var customTitlebar = require('custom-electron-titlebar')
-      //const netList = require('network-list')
-      //const portscanner = require('portscanner')
-      //const isReachable = require('is-reachable')
-      //var nodecmd = require('node-cmd')
-      var syncData
-      //var AutoLaunch = require('auto-launch')
-      //auto launch config
-      //var appLaunch = new AutoLaunch({
-      //  name: 'CLEVER - Screencast & VNC',
-      //  path: process.env.PORTABLE_EXECUTABLE_DIR || process.cwd(),
-      //})
-      //killprocess name
-      //var killProcess = require('kill-process-by-name')
-      //killProcess('ffmpeg')
-      const path = require('path')
+      var config = require(path.join(__dirname, '..', 'config.js'))
       var cleveraddress
       var cleverport = 9100
       var cleverlist = ['192.168.1.208', '192.168.1.100']
@@ -51,58 +39,11 @@
       var os = require('os')
       var ifaces = os.networkInterfaces()
 
-
-      /*netList.scan({
-        vendor: false
-      }, (err, devices) => {
-        devices.forEach(function (iplist) {
-          portscanner.findAPortInUse(cleverport, iplist.ip, function (error, status) {
-            if (iplist.ip == '192.168.1.253') {
-              return
-            }
-            // Status is 'open' if currently in use or 'closed' if available
-            var hostserver = 'http://' + iplist.ip + ':' + cleverport + '/castsave'
-            $.ajax({
-              url: hostserver,
-              type: "POST",
-              data: {
-                devicename: computerName,
-                ipadd: ipaddress
-              },
-              success: function (data, textStatus, jqXHR) {
-                //data - response from server
-              },
-              error: function (jqXHR, textStatus, errorThrown) {
-
-              }
-            })
-            var nodotip = ipaddress.split('.').join("")
-            var pathdir = process.env.PORTABLE_EXECUTABLE_DIR || process.cwd()
-            var pathdir = process.env.PORTABLE_EXECUTABLE_DIR || process.cwd()
-            //pathdir = path.join(pathdir, '../')
-            //https://flashphoner.com/screensharing-from-ffmpeg-to-webrtc/
-            console.log('Cast Started')
-            //run screencast with ffmpeg
-            /*syncData = nodecmd.run(
-              'ffmpeg -f gdigrab -rtbufsize 100M -framerate 30 ' +
-              '-probesize 30M -draw_mouse 1 -i desktop -c:v libx264 -r 30 ' +
-              '-preset ultrafast -tune zerolatency -crf 0 -pix_fmt yuv420p ' +
-              '-f flv "rtmp://' + iplist.ip + ':1935/screencast/' +
-              nodotip + '"',
-              function (err, data, stderr) {
-                castRun(iplist.ip, nodotip)
-                //console.log('data : ', data)
-                //console.log('stderr : ', stderr)
-              })*\
-          })
-        })
-      })*/
-
+      //get local ipv4 address
       Object.keys(ifaces).forEach(function (ifname) {
         var alias = 0
         ifaces[ifname].forEach(function (iface) {
           if ('IPv4' !== iface.family || iface.internal !== false) {
-            // skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
             return
           }
           if (alias >= 1) {
@@ -115,7 +56,7 @@
               sendInfo(data)
               setInterval(function () {
                 sendInfo(data)
-              }, 900000)
+              }, 30000) //update every 30 sec
             })
           }
           ++alias
@@ -123,11 +64,13 @@
       })
     }
 
+    //send information to CLEVER controller
     function sendInfo(hostadd) {
       var hostserver = 'http://' + hostadd + ':' + cleverport + '/castsave'
       $.ajax({
         url: hostserver,
         type: "POST",
+        timeout: 5000,
         data: {
           devicename: computerName,
           ipadd: ipaddress
@@ -142,20 +85,6 @@
         }
       })
     }
-    /*function castRun(ip, myid){
-      console.log('Cast Started')
-      syncData = nodecmd.run(
-              'ffmpeg -f gdigrab -rtbufsize 100M -framerate 30 ' +
-              '-probesize 30M -draw_mouse 1 -i desktop -c:v libx264 -r 30 ' +
-              '-preset ultrafast -tune zerolatency -crf 0 -pix_fmt yuv420p ' +
-              '-f flv "rtmp://' + ip + ':1935/screencast/' +
-              myid + '"',
-              function (err, data, stderr) {
-                castRun(ip, myid)
-                //console.log('data : ', data)
-                //console.log('stderr : ', stderr)
-              })
-    }*/
   </script>
 </head>
 
@@ -163,16 +92,15 @@
   <div class="top top-1">CLEVER</div>
   <div class="top top-2">ScreenCast & VNC</div>
   <div class="container-button">
-    <input type="checkbox" id="auto" class="setup-chkbx" checked>
+    <input type="checkbox" id="auto" class="setup-chkbx" checked disabled>
     <label for="auto" style="font-size:115%;display:inline;">Auto connect</label><br>
+    <input type="checkbox" id="audio" class="setup-chkbx" checked>
+    <label for="audio" style="font-size:115%;display:inline;">Audio & Mic</label><br>
     <input type="checkbox" id="startup" class="setup-chkbx">
     <label for="startup" style="font-size:115%;display:inline;">Start ScreenCast when start-up</label><br>
   </div>
   <div class="container-button">
     <button id="restart-screen" class="setup smaller">Restart</button>
-    <button id="refresh-screen" disabled class="setup smaller">Stop</button>
-    <button id="share-screen" class="setup smaller">Connect</button>
-    <!-- local/remote videos container -->
   </div>
   <div class="copyright">
     <img src="assets/images/logo.png" class="clt-logo"></img>
@@ -181,44 +109,23 @@
 </body>
 
 <script>
+  var lastModified = fs.stat("package.json", function (err, stats) {
+    return stats.mtime
+  })
+
   $('.copyright-desc').text('Copyright © 2000-' + new Date().getFullYear() +
-    ', Closed-loop. All right reserved | Version: ' + remote.app.getVersion() + ' | www.closed-loop.biz')
+    ', Closed-loop. All right reserved | Version: ' + remote.app.getVersion() + ' ' +
+    moment(lastModified).format('MMM') + ' ' + moment(lastModified).format('YYYY') + ' | www.closed-loop.biz')
+
   $('#share-screen').click(function () {
     $('#share-screen').hide()
     $('#refresh-screen').show()
     myTrayImg('publish')
-    /*$('#refresh-screen').attr("disabled", false)
-    $('#share-screen').attr("disabled", true)
-    websockify({
-      target: ipaddress + ':5900',
-      source: '127.0.0.1:8080'
-    })
-    myTrayImg('publish')*/
   })
 
-  $('#refresh-screen').click(function () {
-    $('#refresh-screen').hide()
-    $('#share-screen').show()
-    myTrayImg('stopped')
-    /*myTrayImg('stopped')
-    if ($('#auto').is(':checked')) {
-      $("#share-screen").show()
-    }
-    $('#refresh-screen').attr("disabled", true)
-    $('#share-screen').attr("disabled", false)
-    websockify({
-      target: ipaddress + ':6000',
-      source: '127.0.0.1:9090'
-    })*/
+  $('#restart-screen').click(async function () {
+    ipcRenderer.invoke('reload', 'reload')
   })
-
-  $('#restart-screen').click(function () {
-    //location.reload(true)
-  })
-
-  function myTrayImg(icon) {
-    ipcRenderer.send('tray-icon', icon)
-  }
 
   $(document).ready(function () {
     new customTitlebar.Titlebar({
@@ -228,26 +135,17 @@
       minimizable: false,
       titleHorizontalAlignment: 'right'
     })
+
     $('#reset').on('click', function () {
       $('#url').val('localhost')
       $('#port').val('9100')
     })
-    if (localStorage.getItem("host") === null || localStorage.getItem("host") == '') {
-      $('#url').val('localhost')
-    } else {
-      $('#url').val(localStorage.getItem("host"))
 
-    }
-    if (localStorage.getItem("port") === null || localStorage.getItem("port") == '') {
-      $('#port').val('9100')
-    } else {
-      $('#port').val(localStorage.getItem("port"))
-    }
     if ($('#auto').is(':checked')) {
       myTrayImg('publish')
-      websockify({
-        target: ipaddress + ':5900',
-        source: '127.0.0.1:8080'
+      
+      ipcRenderer.invoke('port-extended', ipaddress).then((result) => {
+        console.log(result)
       })
       $("#share-screen").hide()
       $('#refresh-screen').attr("disabled", false)
@@ -255,6 +153,7 @@
       $("#share-screen").show()
       $('#refresh-screen').attr("disabled", true)
     }
+
     $('#auto').click(function () {
       if (!this.checked) {
         $("#share-screen").show()
@@ -265,21 +164,47 @@
         $('#refresh-screen').show()
       }
     })
-    if (localStorage.getItem("startup") == "on") {
+
+    //audio and mic setup
+    if (config.audio) {
+      $('#audio').prop('checked', true)
+    } else {
+      $('#audio').prop('checked', false)
+    }
+
+    //save startup settings and pass to ipc main
+    $('#audio').click(function () {
+      if (!this.checked) {
+        ipcRenderer.invoke('save-config', 'audio', 'exports.audio = false', this.checked)
+      } else {
+        ipcRenderer.invoke('save-config', 'audio', 'exports.audio = true', this.checked)
+      }
+      setTimeout(function () {
+        ipcRenderer.invoke('restartapp', 'restartapp')
+      }, 2000)
+    })
+
+    //auto startup setup
+    if (config.autostartup) {
       $('#startup').prop('checked', true)
     } else {
       $('#startup').prop('checked', false)
     }
+
+    //save startup settings and pass to ipc main
     $('#startup').click(function () {
       if (!this.checked) {
-        appLaunch.disable()
-        localStorage.setItem("startup", "off")
+        ipcRenderer.invoke('save-config', 'autostartup', 'exports.autostartup = false', this.checked)
       } else {
-        appLaunch.enable()
-        localStorage.setItem("startup", "on")
+        ipcRenderer.invoke('save-config', 'autostartup', 'exports.autostartup = true', this.checked)
       }
     })
   })
+
+  function myTrayImg(icon) {
+    ipcRenderer.invoke('tray-icon', icon)
+
+  }
 </script>
 
 </html>

@@ -12,16 +12,25 @@ const path = require('path')
 const fs = require('fs')
 const os = require('os')
 const homedir = os.homedir()
+const AutoLaunch = require('auto-launch')
 const isReachable = require('is-reachable')
+const express = require('express') //expressJS
+const server = require('http').Server(app)
+const websockify = require('@sukkis/node-multi-websockify') //multi websockify for noVNC
+const async = require('async') //async foreach function
 const logdir = path.normalize(homedir + '/clevervnc-log')
 const iconPath = path.join(__dirname, '/src/assets/media/logo.png')
 const publishPath = path.join(__dirname, '/src/assets/media/publish.png')
 const now = new Date()
 const date = require('date-and-time')
 const datelog = date.format(now, 'YYYY-MM-DD')
+const config = require('./config') //Get configuration for ScreenCast
+const rtAudio = require('./audiostream')
 var log = require('electron-log')
 log.transports.file.file = logdir + '/' + datelog + '.log'
 var pingstat
+
+server.listen(8080, () => console.log('listening on *:8080'))
 
 if (!fs.existsSync(logdir)) {
   fs.mkdir(logdir, 0755, (err) => {
@@ -34,7 +43,7 @@ if (!fs.existsSync(logdir)) {
 //One instance process check
 let win = null
 let appIcon = null
-var autorload
+var autoreload
 
 var vncport = (process.platform == 'linux') ? '5900' : '5900'
 
@@ -42,57 +51,69 @@ const template = [
   // { role: 'fileMenu' }
   {
     label: 'Menu',
-    submenu: [
-      //{
-      //  role: 'forcereload'
-      //},
-      {
+    submenu: [{
         label: 'Auto restart',
-        submenu: [
-          {
+        submenu: [{
             label: "30 min",
             type: "radio",
-            checked: true,
-            click: e => {
-              if (autorload) { clearInterval(autoreload) }
-              if (e.checked) {
-                autorload = setInterval(function () {
+            checked: config.autorestart == 1800000 ? true : false,
+            click: (menuItem, browserWindow, event) => {
+              menuItem.checked = true
+              replaceConfig('autorestart', 'exports.autorestart = 1800000')
+              if (autoreload) {
+                clearInterval(autoreload)
+              }
+              if (menuItem.checked) {
+                autoreload = setInterval(function () {
                   console.log('3hour')
                   //win.webContents.reloadIgnoringCache()
                   win.webContents.session.clearCache()
-                }, 1800000
-                )
+                }, 1800000)
               }
+              const menu = Menu.buildFromTemplate(template)
+              Menu.setApplicationMenu(menu)
             }
           },
           {
             label: "1 hour",
             type: "radio",
-            click: e => {
-              if (autorload) { clearInterval(autoreload) }
-              if (e.checked) {
-                autorload = setInterval(function () {
+            checked: config.autorestart == 3600000 ? true : false,
+            click: (menuItem, browserWindow, event) => {
+              menuItem.checked = true
+              replaceConfig('autorestart', 'exports.autorestart = 3600000')
+              if (autoreload) {
+                clearInterval(autoreload)
+              }
+              if (menuItem.checked) {
+                autoreload = setInterval(function () {
                   console.log('6hour')
                   //win.webContents.reloadIgnoringCache()
                   win.webContents.session.clearCache()
-                }, 3600000
-                )
+                }, 3600000)
               }
+              const menu = Menu.buildFromTemplate(template)
+              Menu.setApplicationMenu(menu)
             }
           },
           {
             label: "3 hour",
             type: "radio",
-            click: e => {
-              if (autorload) { clearInterval(autoreload) }
+            checked: config.autorestart == 10800000 ? true : false,
+            click: (menuItem, browserWindow, event) => {
+              menuItem.checked = true
+              replaceConfig('autorestart', 'exports.autorestart = 10800000')
+              if (autoreload) {
+                clearInterval(autoreload)
+              }
               if (e.checked) {
-                autorload = setInterval(function () {
+                autoreload = setInterval(function () {
                   console.log('9hour')
                   //win.webContents.reloadIgnoringCache()
                   win.webContents.session.clearCache()
-                }, 10800000
-                )
+                }, 10800000)
               }
+              const menu = Menu.buildFromTemplate(template)
+              Menu.setApplicationMenu(menu)
             }
           }
         ]
@@ -121,7 +142,13 @@ const template = [
       (isMac ? {
         role: 'close'
       } : {
-        role: 'quit'
+        label: 'Quit',
+        click: async () => {
+          app.isQuiting = true
+          appIcon.destroy()
+          app.quit()
+          app.exit()
+        }
       })
     ]
   }
@@ -149,6 +176,12 @@ try {
     //disabled cache
     app.commandLine.appendSwitch("disable-http-cache")
 
+    //increase memory size
+    var totalRAM = os.totalmem()
+    totalRAM = totalRAM / (1024 * 1024)
+    app.commandLine.appendSwitch("js-flags", "--max-old-space-size=" + Math.trunc(totalRAM))
+
+    //ignore cert
     app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
       event.preventDefault()
       callback(true)
@@ -171,12 +204,20 @@ try {
         webPreferences: {
           webSecurity: false,
           enableRemoteModule: true,
-          devTools: true,
+          devTools: false,
           nodeIntegration: true,
           webSecurity: false,
           zoomFactor: 1
         }
       })
+
+      //Autostartup
+      var screencastAutoLaunch = new AutoLaunch({
+        name: 'CLEVER - ScreenCast',
+        path: '/Applications/Minecraft.app',
+      })
+      if (config.autostartup) screencastAutoLaunch.enable()
+      else screencastAutoLaunch.disable()
 
       //Menu Settings
       const menu = Menu.buildFromTemplate(template)
@@ -185,22 +226,48 @@ try {
       //Tray Settings
       appIcon = new Tray(iconPath)
       var contextMenu = Menu.buildFromTemplate([{
-        label: 'Show App',
-        click: function () {
-          win.show()
+          label: 'Show App',
+          click: function () {
+            win.show()
+          }
+        },
+        {
+          label: 'Quit',
+          click: function () {
+            app.isQuiting = true
+            appIcon.destroy()
+            app.quit()
+            app.exit()
+          }
         }
-      },
-      {
-        label: 'Quit',
-        click: function () {
-          app.isQuiting = true
-          app.quit()
-        }
-      }
       ])
 
+      //reload page
+      ipcMain.handle('reload', async (event, reload) => {
+        win.webContents.reloadIgnoringCache()
+        return
+      })
+
+      //restart page
+      ipcMain.handle('restartapp', async (event, restart) => {
+        app.relaunch()
+        appIcon.destroy()
+        app.exit()
+        return
+      })
+
+      //save config
+      ipcMain.handle('save-config', async (event, search, replace, checked) => {
+        replaceConfig(search, replace)
+        if (search == 'startup') {
+          if (checked) screencastAutoLaunch.enable()
+          else screencastAutoLaunch.disable()
+        }
+        return
+      })
+
       //set icon color
-      ipcMain.on('tray-icon', (event, trayimg) => {
+      ipcMain.handle('tray-icon', async (event, trayimg) => {
         var titlenotif = "Video Wall Screencast & VNC Notification"
         if (trayimg == 'publish') {
           appIcon.setImage(publishPath)
@@ -217,18 +284,48 @@ try {
             content: 'Screencast & VNC stop to sharing.'
           })
         }
+        return
       })
+
+      //check vnc port 5901-5905
+      //set icon color
+      ipcMain.handle('port-extended', async (event, ipaddress) => {
+        var port = ['5900', '5901', '5902', '5903', '5904', '5905']
+        var availPort = []
+        async.eachSeries(port, function (isPort, next) {
+            isReachable('127.0.0.1:' + isPort, {
+              timeout: 10000
+            }).then((status) => {
+              if (status == true) {
+                var screenPath = '/screen' + isPort.substring(3, 4)
+                var targetObj = new Object()
+                targetObj.target = ipaddress + ':' + isPort //targer address
+                targetObj.path = screenPath // path
+                availPort.push(targetObj)
+              }
+              next()
+            })
+          },
+          function (err) {
+            if (err) {
+              return err
+            }
+            console.log(availPort)
+            websockify(server, availPort) // create websockify servers in array of objects
+            return availPort
+          })
+      })
+
       appIcon.setContextMenu(contextMenu)
       appIcon.on('double-click', () => {
+        if (win.isVisible()) return win.hide()
         win.show()
       })
 
-      autorload = setInterval(function () {
-        console.log('30 mins')
+      autoreload = setInterval(function () {
         //win.webContents.reloadIgnoringCache()
         win.webContents.session.clearCache()
-      }, 1800000
-      )
+      }, config.autorestart)
 
       win.on('close', function (event) {
         win = null
@@ -295,4 +392,15 @@ try {
   }
 } catch (ex) {
   log.warn(ex)
+}
+
+function replaceConfig(search, replace) {
+  fs.readFile(path.join(__dirname, 'config.js'), 'utf8', function (err, data) {
+    let searchString = search
+    let re = new RegExp('^.*' + searchString + '.*$', 'gm')
+    let formatted = data.replace(re, replace)
+    fs.writeFile(path.join(__dirname, 'config.js'), formatted, 'utf8', function (err) {
+      if (err) return console.log(err)
+    })
+  })
 }
