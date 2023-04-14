@@ -12,11 +12,15 @@ const path = require('path')
 const fs = require('fs')
 const os = require('os')
 const homedir = os.homedir()
+const si = require('systeminformation');
 const AutoLaunch = require('auto-launch')
 const isReachable = require('is-reachable')
-const express = require('express') //expressJS
-const server = require('http').Server(app)
-const websockify = require('@sukkis/node-multi-websockify') //multi websockify for noVNC
+//const server = require('http').Server(app)
+///const websockify = require('@sukkis/node-multi-websockify') //multi websockify for noVNC
+const websockify = require('./websockify') //multi websockify for noVNC
+const {
+  createServer
+} = require("https")
 const async = require('async') //async foreach function
 const logdir = path.normalize(homedir + '/clevervnc-log')
 const iconPath = path.join(__dirname, '/src/assets/media/logo.png')
@@ -29,7 +33,12 @@ const rtAudio = require('./audiostream')
 var log = require('electron-log')
 log.transports.file.file = logdir + '/' + datelog + '.log'
 var pingstat
+var ipaddress
 
+const server = createServer({
+  cert: fs.readFileSync(path.join(__dirname, '/cert/example.com+5.pem')),
+  key: fs.readFileSync(path.join(__dirname, '/cert/example.com+5-key.pem'))
+})
 server.listen(8080, () => console.log('listening on *:8080'))
 
 if (!fs.existsSync(logdir)) {
@@ -204,7 +213,7 @@ try {
         webPreferences: {
           webSecurity: false,
           enableRemoteModule: true,
-          devTools: false,
+          devTools: true,
           nodeIntegration: true,
           webSecurity: false,
           zoomFactor: 1
@@ -289,7 +298,8 @@ try {
 
       //check vnc port 5901-5905
       //set icon color
-      ipcMain.handle('port-extended', async (event, ipaddress) => {
+      ipcMain.handle('port-extended', async (event, msg) => {
+        console.log(ipaddress)
         var port = ['5900', '5901', '5902', '5903', '5904', '5905']
         var availPort = []
         async.eachSeries(port, function (isPort, next) {
@@ -314,6 +324,11 @@ try {
             websockify(server, availPort) // create websockify servers in array of objects
             return availPort
           })
+      })
+
+      //give ip address
+      ipcMain.handle('get-ipaddress', async (event, msg) => {
+        return ipaddress
       })
 
       appIcon.setContextMenu(contextMenu)
@@ -363,8 +378,11 @@ try {
           timeout: 10000
         }).then((status) => {
           if (status == true) {
-            win.loadURL("file://" + __dirname + "/src/index.html")
-            pingstat = false
+            si.networkInterfaces('default').then(ipcon => {
+              ipaddress = ipcon.ip4
+              win.loadURL("file://" + __dirname + "/src/index.html")
+              pingstat = false
+            })
           } else {
             win.hide()
             const options = {

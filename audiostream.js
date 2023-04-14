@@ -3,10 +3,16 @@
     var rtAudio = null
     if (config.audio) {
         const WebSocket = require('ws') //create websocket server for audio
-        var wss = new WebSocket.Server({ //publish websocket server for audio
-            port: 8091
+        const HttpsServer = require('https').createServer
+        const fs = require("fs")
+        const path = require("path")
+        const server = HttpsServer({
+            cert: fs.readFileSync(path.join(__dirname, '/cert/example.com+5.pem')),
+            key: fs.readFileSync(path.join(__dirname, '/cert/example.com+5-key.pem'))
         })
-        console.log('Audio ws:// server ready, port 8091')
+        var wss = new WebSocket.Server({ //publish websocket server for audio
+            server
+        })
         wss.on('connection', function connection(ws) {
             console.log('Audio socket connected. sending data...')
         })
@@ -23,13 +29,11 @@
         rtAudio = new RtAudio(RtAudioApi.WINDOWS_ASIO)
 
         // Open the input/output stream
-        rtAudio.openStream(
-            {
+        rtAudio.openStream({
                 deviceId: rtAudio.getDefaultOutputDevice(), // Input device id (Get all devices using `getDevices`)
                 nChannels: 2, // Number of channels
                 firstChannel: 0 // First channel index on device (default = 0).
-            }, 
-            {
+            }, {
                 deviceId: rtAudio.getDefaultOutputDevice(), // Output device id (Get all devices using `getDevices`)
                 nChannels: 2, // Number of channels
                 firstChannel: 0 // First channel index on device (default = 0).
@@ -56,6 +60,7 @@
         // Start the stream
         rtAudio.outputVolume = 0
         rtAudio.start()
+        server.listen(8091, () => console.log('listening on *:8091'))
     }
     module.exports = rtAudio
 }())

@@ -1,6 +1,6 @@
 {
   "name": "clevervncclient",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Run your screen monitor as remote devices or casting to video wall with CLEVER",
   "main": "index.js",
   "license": "ISC",
@@ -31,7 +31,8 @@
     "is-reachable": "^5.0.0",
     "moment": "^2.29.4",
     "node-websockify": "^1.0.3",
-    "path": "^0.12.7"
+    "path": "^0.12.7",
+    "systeminformation": "^5.17.12"
   },
   "devDependencies": {
     "electron": "^10.0.0",

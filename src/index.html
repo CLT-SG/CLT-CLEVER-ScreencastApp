@@ -19,7 +19,6 @@
 
   <script>
     if (typeof (require) != "undefined") {
-      var ipaddress
       var rtAudio
       var {
         ipcRenderer,
@@ -27,42 +26,22 @@
       } = require('electron')
       var fs = require('fs')
       var path = require('path')
-      var os = require('os')
       var moment = require('moment')
+      var os = require('os')
       var computerName = os.hostname()
       var customTitlebar = require('custom-electron-titlebar')
       var config = require(path.join(__dirname, '..', 'config.js'))
       var cleveraddress
       var cleverport = 9100
+      var ipaddress
       var cleverlist = ['192.168.1.208', '192.168.1.100']
-      //get local ip address
-      var os = require('os')
-      var ifaces = os.networkInterfaces()
 
       //get local ipv4 address
-      Object.keys(ifaces).forEach(function (ifname) {
-        var alias = 0
-        ifaces[ifname].forEach(function (iface) {
-          if ('IPv4' !== iface.family || iface.internal !== false) {
-            return
-          }
-          if (alias >= 1) {
-            // this single interface has multiple ipv4 addresses
-            //console.log(ifname + ':' + alias, iface.address)
-          } else {
-            // this interface has only one ipv4 adress
-            ipaddress = iface.address
-            cleverlist.forEach(function (data, index) {
-              sendInfo(data)
-              setInterval(function () {
-                sendInfo(data)
-              }, 30000) //update every 30 sec
-            })
-          }
-          ++alias
-        })
+      ipcRenderer.invoke('get-ipaddress', 'ippp').then((result) => {
+        ipaddress = result
       })
     }
+
 
     //send information to CLEVER controller
     function sendInfo(hostadd) {
@@ -109,13 +88,9 @@
 </body>
 
 <script>
-  var lastModified = fs.stat("package.json", function (err, stats) {
-    return stats.mtime
-  })
 
   $('.copyright-desc').text('Copyright © 2000-' + new Date().getFullYear() +
-    ', Closed-loop. All right reserved | Version: ' + remote.app.getVersion() + ' ' +
-    moment(lastModified).format('MMM') + ' ' + moment(lastModified).format('YYYY') + ' | www.closed-loop.biz')
+    ', Closed-loop. All right reserved | Version: ' + remote.app.getVersion() + ' ' + ' | www.closed-loop.biz')
 
   $('#share-screen').click(function () {
     $('#share-screen').hide()
@@ -142,11 +117,15 @@
     })
 
     if ($('#auto').is(':checked')) {
+      sendInfo(cleverlist)
+
       myTrayImg('publish')
-      
-      ipcRenderer.invoke('port-extended', ipaddress).then((result) => {
-        console.log(result)
-      })
+
+      setTimeout(() => {
+        ipcRenderer.invoke('port-extended', 'msg').then((result) => {
+          console.log(result)
+        })
+      }, 5000)
       $("#share-screen").hide()
       $('#refresh-screen').attr("disabled", false)
     } else {
