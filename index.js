@@ -220,13 +220,14 @@ try {
         }
       })
 
-      //Autostartup
-      var screencastAutoLaunch = new AutoLaunch({
-        name: 'CLEVER - ScreenCast',
-        path: '/Applications/Minecraft.app',
-      })
-      if (config.autostartup) screencastAutoLaunch.enable()
-      else screencastAutoLaunch.disable()
+      //RUN WINDOWS AT STARTU
+      if (app.isPackaged) {
+        if (config.autostartup == 'Y') {
+          app.setLoginItemSettings({
+            openAtLogin: true,
+          })
+        }
+      }
 
       //Menu Settings
       const menu = Menu.buildFromTemplate(template)
