@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Audio Streaming</title>
+</head>
+
+<body>
+    <h1>Master Audio Streaming</h1>
+    <button id="startMaster">Start Master</button>
+    <button id="openClient">Open Client</button>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+
+        document.getElementById('openClient').addEventListener('click', () => {
+            // Redirect to client.html
+            window.location.href = '/client.html';
+        });
+        let peerConnection;
+
+        document.getElementById('startMaster').addEventListener('click', () => {
+            const socket = io();
+            const constraints = { audio: true };
+
+            // Get audio stream from microphone
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(stream => {
+                    const audioTracks = stream.getAudioTracks();
+                    const audioTrack = audioTracks[0];
+
+                    // Initialize WebRTC connection
+                    peerConnection = new RTCPeerConnection();
+
+                    // Add audio track to peer connection
+                    peerConnection.addTrack(audioTrack, stream);
+
+                    // Setup audio processing and visualization
+                    setupAudioProcessing(stream);
+
+                    // Send offer to signaling server
+                    peerConnection.createOffer()
+                        .then(offer => peerConnection.setLocalDescription(offer))
+                        .then(() => {
+                            socket.emit('offer', peerConnection.localDescription);
+                        });
+
+                    // Handle ICE candidates
+                    peerConnection.onicecandidate = (event) => {
+                        if (event.candidate) {
+                            socket.emit('candidate', event.candidate);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error accessing microphone:', error);
+                })
+        })
+
+        // Connect to Socket.IO server
+        const socket = io()
+
+        // Handle received offer from master
+        socket.on('offer', (offer) => {
+            console.log('Received offer from master:', offer)
+
+            // Create peer connection
+            peerConnection = new RTCPeerConnection()
+
+            // Set remote description
+            peerConnection.setRemoteDescription(offer)
+                .then(() => {
+                    // Create answer
+                    return peerConnection.createAnswer()
+                })
+                .then(answer => {
+                    // Set local description
+                    return peerConnection.setLocalDescription(answer)
+                })
+                .then(() => {
+                    // Send answer to signaling server
+                    socket.emit('answer', peerConnection.localDescription)
+                })
+                .catch(error => {
+                    console.error('Error setting remote description:', error)
+                })
+
+            // Handle ICE candidates
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('candidate', event.candidate)
+                }
+            }
+
+            // Handle incoming audio tracks
+            peerConnection.ontrack = (event) => {
+                const stream = event.streams[0]
+                socket.emit('audioStream', stream) // Send audio stream to client
+            }
+        })
+
+        // Handle received ICE candidates
+        socket.on('candidate', (candidate) => {
+            console.log('Received ICE candidate from peer:', candidate)
+            peerConnection.addIceCandidate(candidate)
+        })
+
+        // Audio Processing
+        function setupAudioProcessing(stream) {
+            const audioCtx = new AudioContext();
+            const source = audioCtx.createMediaStreamSource(stream)
+            const analyser = audioCtx.createAnalyser()
+            source.connect(analyser).connect(audioCtx.destination)
+            visualizeAudio(analyser)
+        }
+
+        function visualizeAudio(analyser) {
+            const canvas = document.getElementById('audioVisualizer')
+            const canvasCtx = canvas.getContext('2d')
+
+            analyser.fftSize = 256
+            const bufferLength = analyser.frequencyBinCount
+            const dataArray = new Uint8Array(bufferLength)
+
+            function renderFrame() {
+                requestAnimationFrame(renderFrame)
+                analyser.getByteFrequencyData(dataArray)
+
+                // Basic drawing on canvas using dataArray
+                canvasCtx.clearRect(0, 0, canvas.width, canvas.height)
+                canvasCtx.fillStyle = 'rgb(0, 0, 0)'
+                let bars = 100
+                let barWidth = (canvas.width / bars) - 1
+                let x = 0
+
+                for (let i = 0; i < bars; i++) {
+                    let barHeight = dataArray[i]
+
+                    canvasCtx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2)
+                    x += barWidth + 1
+                }
+            }
+            renderFrame()
+        }
+    </script>
+</body>
+
+</html>

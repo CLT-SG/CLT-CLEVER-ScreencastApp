@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Audio Streaming</title>
+</head>
+<body>
+    <h1>Client Audio Streaming</h1>
+    <button id="startClient">Start Client</button>
+    <audio id="audioPlayer" controls></audio>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        document.getElementById('startClient').addEventListener('click', () => {
+            const socket = io();
+
+            // Request audio stream from master
+            socket.emit('requestStream');
+
+            // Handle received audio stream from master
+            socket.on('audioStream', (stream) => {
+                const audioElement = document.getElementById('audioPlayer');
+                audioElement.srcObject = stream;
+                audioElement.play(); // Start playing the audio stream
+            });
+        });
+    </script>
+</body>
+</html>
