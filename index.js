@@ -29,7 +29,7 @@ const now = new Date()
 const date = require('date-and-time')
 const datelog = date.format(now, 'YYYY-MM-DD')
 const config = require('./config') //Get configuration for ScreenCast
-const rtAudio = require('./audiostream')
+//const rtAudio = require('./audiostream')
 var log = require('electron-log')
 log.transports.file.file = logdir + '/' + datelog + '.log'
 var pingstat
@@ -42,7 +42,7 @@ const server = createServer({
 server.listen(8080, () => console.log('listening on *:8080'))
 
 if (!fs.existsSync(logdir)) {
-  fs.mkdir(logdir, 0755, (err) => {
+  fs.mkdir(logdir, 0x755, (err) => {
     if (err) {
       log.warn(err)
     }

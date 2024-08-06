@@ -46,7 +46,7 @@
     //send information to CLEVER controller
     function sendInfo(hostadd) {
       var hostserver = 'http://' + hostadd + ':' + cleverport + '/castsave'
-      $.ajax({
+      /*$.ajax({
         url: hostserver,
         type: "POST",
         timeout: 5000,
@@ -62,7 +62,7 @@
         error: function (jqXHR, textStatus, errorThrown) {
           console.log('Unable to connect this clever')
         }
-      })
+      })*/
     }
   </script>
 </head>
@@ -103,6 +103,7 @@
   })
 
   $(document).ready(function () {
+    console.log(customTitlebar)
     new customTitlebar.Titlebar({
       backgroundColor: customTitlebar.Color.fromHex('#770055'),
       maximizable: false,
