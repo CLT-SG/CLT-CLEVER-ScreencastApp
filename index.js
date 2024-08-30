@@ -35,11 +35,13 @@ log.transports.file.file = logdir + '/' + datelog + '.log'
 var pingstat
 var ipaddress
 
+//Websockify settings.
+const hostname = os.hostname()
 const server = createServer({
   cert: fs.readFileSync(path.join(__dirname, '/cert/example.com+5.pem')),
   key: fs.readFileSync(path.join(__dirname, '/cert/example.com+5-key.pem'))
 })
-server.listen(8080, () => console.log('listening on *:8080'))
+server.listen(8080, hostname, () => console.log(`listening on ${hostname}:8080`))
 
 if (!fs.existsSync(logdir)) {
   fs.mkdir(logdir, 0x755, (err) => {
@@ -321,7 +323,7 @@ try {
             if (err) {
               return err
             }
-            console.log(availPort)
+            console.log('available port : ', availPort)
             websockify(server, availPort) // create websockify servers in array of objects
             return availPort
           })

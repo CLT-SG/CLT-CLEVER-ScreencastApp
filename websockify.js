@@ -5,7 +5,7 @@ const log = msg => console.log(new Date(), msg)
 
 module.exports = (server, sockets) => {
 	let targets = []
-	if(typeof(sockets) == "object"){
+	if (typeof (sockets) == "object") {
 		sockets.forEach(t => {
 			targets.push({
 				host: t.target.split(':')[0],
@@ -17,34 +17,37 @@ module.exports = (server, sockets) => {
 	}
 
 	let clientAddr = null
-	for(let target of targets){
+	for (let target of targets) {
 
-		target.wss = new WebSocketServer({ noServer: true, ...target.path })
+		target.wss = new WebSocketServer({
+			noServer: true,
+			...target.path
+		})
 
 		target.wss.on('connection', (client, req) => {
 			let cId = Date.now()
-			if(!clientAddr) clientAddr = client._socket.remoteAddress
+			if (!clientAddr) clientAddr = client._socket.remoteAddress
 
 			target.connection[cId] = net.createConnection(target.port, target.host, () => {
-			    log(`${clientAddr} -> Connected to target on ${target.host}:${target.port}`)
+				log(`${clientAddr} -> Connected to target on ${target.host}:${target.port}`)
 			})
-			  
+
 			target.connection[cId].on('data', data => {
 				try {
 					client.send(data)
 				} catch (e) {
-					log(`${clientAddr} -> Client closed, cleaning up target`)					
+					log(`${clientAddr} -> Client closed, cleaning up target`)
 					target.connection[cId].end()
 				}
 			})
-			
+
 			target.connection[cId].on('end', () => {
-			    log(`${clientAddr} -> Target disconnected`)					
+				log(`${clientAddr} -> Target disconnected`)
 				client.close()
 			})
-			
+
 			target.connection[cId].on('error', () => {
-			    log(`${clientAddr} -> Connection error`)					
+				log(`${clientAddr} -> Connection error`)
 				target.connection[cId].end()
 				client.close()
 			})
@@ -59,13 +62,13 @@ module.exports = (server, sockets) => {
 			})
 
 			client.on('error', error => {
-			    log(`${clientAddr} -> WSS Client error`)			
+				log(`${clientAddr} -> WSS Client error`)
 				target.connection[cId].end()
 			})
 
 		})
 		server.on('upgrade', (request, socket, head) => {
-			if(request.url == target.path){
+			if (request.url == target.path) {
 				target.wss.handleUpgrade(request, socket, head, (wss) => {
 					target.wss.emit('connection', wss, request)
 				})
