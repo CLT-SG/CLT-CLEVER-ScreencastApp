@@ -115,8 +115,12 @@ strong {
 
 .top-2 {
   margin-top: 3%;
-  margin-bottom: 10%;
   font-size: 1.3em;
+}
+
+.top-3 {
+  font-size: 1em;
+  margin-bottom: 10%;
 }
 
 /* For mobile future change this width */

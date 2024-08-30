@@ -69,7 +69,8 @@
 
 <body>
   <div class="top top-1">CLEVER</div>
-  <div class="top top-2">ScreenCast & VNC</div>
+  <div class="top top-2">ScreenCast</div>
+  <div class="top top-3"></div>
   <div class="container-button">
     <input type="checkbox" id="auto" class="setup-chkbx" checked disabled>
     <label for="auto" style="font-size:115%;display:inline;">Auto connect</label><br>
@@ -91,6 +92,8 @@
 
   $('.copyright-desc').text('Copyright © 2000-' + new Date().getFullYear() +
     ', Closed-loop. All right reserved | Version: ' + remote.app.getVersion() + ' ' + ' | www.closed-loop.biz')
+    
+  $('.top-3').text(`Hostname : ${os.hostname}`)
 
   $('#share-screen').click(function () {
     $('#share-screen').hide()
@@ -103,8 +106,8 @@
   })
 
   $(document).ready(function () {
-    console.log(customTitlebar)
     new customTitlebar.Titlebar({
+      overflow: 'hidden',
       backgroundColor: customTitlebar.Color.fromHex('#770055'),
       maximizable: false,
       hideWhenClickingClose: true,
