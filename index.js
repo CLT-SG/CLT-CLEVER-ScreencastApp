@@ -41,7 +41,7 @@ const server = createServer({
   cert: fs.readFileSync(path.join(__dirname, '/cert/example.com+5.pem')),
   key: fs.readFileSync(path.join(__dirname, '/cert/example.com+5-key.pem'))
 })
-server.listen(8080, hostname, () => console.log(`listening on ${hostname}:8080`))
+server.listen(8840, hostname, () => console.log(`listening on ${hostname}:8840`))
 
 if (!fs.existsSync(logdir)) {
   fs.mkdir(logdir, 0x755, (err) => {

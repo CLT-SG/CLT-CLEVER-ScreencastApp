@@ -1,4 +1,4 @@
-const socket = io('http://192.168.1.107:8080');
+const socket = io('http://localhost:8840');
 const peerConnection = new RTCPeerConnection();
 
 // UI elements
