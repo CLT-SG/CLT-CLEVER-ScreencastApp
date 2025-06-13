@@ -8,6 +8,16 @@
   src: url('../fonts/Roboto-Medium.ttf'); 
 } 
 
+/* Hide scrollbars globally */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
 /* Base styles */
 html,
 body {
@@ -22,6 +32,46 @@ body {
   width: 100%;
   font-family: "Segoe UI", "Open Sans", "Ubuntu", "Calibri", "Corbel", Tahoma, Sans-Serif;
   font-size: 1em;
+  
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Hide scrollbar for IE, Edge and Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Hide scrollbars for all scrollable elements */
+* {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Hide scrollbar for IE, Edge and Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Make sure card content is still scrollable even with hidden scrollbars */
+.card-content {
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 200px; /* Set a reasonable max height for scrollable content */
+}
+
+/* Tables with many rows should still be scrollable */
+.vnc-ports-table {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+/* Make notification area scrollable if many notifications */
+.notification-area {
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 /* App container for better layout */
@@ -77,6 +127,9 @@ body {
 
 .card-content {
   padding: 10px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 200px; /* Set a reasonable max height for scrollable content */
 }
 
 .card-header {
@@ -94,7 +147,7 @@ body {
   font-weight: 600;
 }
 
-/* Host info styling */
+/* Host info styling - improved for responsiveness */
 .host-info-card {
   background-color: rgba(255, 255, 255, 0.1);
   border-radius: 10px;
@@ -109,18 +162,30 @@ body {
   gap: 10px;
 }
 
+.host-info-row {
+  width: 100%;
+}
+
 .host-info-item {
   display: flex;
+  flex-direction: row;
   align-items: center;
   padding: 8px;
   background-color: rgba(0, 0, 0, 0.1);
   border-radius: 5px;
+  flex-wrap: wrap;
 }
 
 .host-info-label {
   font-weight: 600;
-  width: 120px;
+  width: 80px;
   flex-shrink: 0;
+}
+
+.host-info-value-container {
+  display: flex;
+  flex: 1;
+  align-items: center;
 }
 
 .host-info-value {
@@ -131,6 +196,9 @@ body {
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .host-info-value:hover {
@@ -323,13 +391,19 @@ body {
   border-collapse: collapse;
   font-family: monospace;
   font-size: 0.9em;
+  max-height: 200px;
+  overflow-y: auto;
+  table-layout: fixed;
 }
 
 .vnc-ports-table th, 
 .vnc-ports-table td {
-  padding: 10px;
+  padding: 10px 5px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   text-align: center;
+  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .vnc-ports-table th {
@@ -395,6 +469,8 @@ body {
   flex-direction: column;
   gap: 10px;
   max-width: 350px;
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 .notification {
@@ -545,51 +621,165 @@ body {
   font-size: 0.8em;
 }
 
-/* Responsive styles */
-@media (max-width: 768px) {
-  .control-buttons {
-    flex-direction: column;
-    align-items: center;
+/* Improved responsive styles */
+@media (max-width: 650px) {
+  /* Base adjustments for small screens */
+  body {
+    font-size: 0.9em;
   }
-  
-  .host-info-item {
-    flex-direction: column;
-    align-items: flex-start;
+
+  .app-container {
+    padding: 0 10px 10px 10px;
   }
-  
-  .host-info-label {
-    width: 100%;
-    margin-bottom: 5px;
-  }
-  
-  .host-info-value {
-    width: 100%;
-  }
-  
-  .copy-button {
-    margin-left: 0;
-    margin-top: 5px;
-    width: 100%;
-  }
-  
+
+  /* Header adjustments */
   .header-section {
-    flex-direction: column;
+    padding: 10px 0;
   }
-  
-  .header-logo {
-    margin-right: 0;
+
+  .header-text h1 {
+    font-size: 1.6em;
+  }
+
+  .subtitle {
+    font-size: 0.9em;
+  }
+
+  /* Card styles adjustments */
+  .card {
+    padding: 10px;
+    margin-bottom: 15px;
+  }
+
+  .card h3 {
+    font-size: 1em;
     margin-bottom: 10px;
   }
-}
 
-@media (max-width: 500px) {
-  .settings-row {
-    flex-direction: column;
+  /* Host info specific styles */
+  .host-info-container {
+    gap: 5px;
   }
-  
-  .notification-area {
-    left: 20px;
-    right: 20px;
-    max-width: none;
+
+  .host-info-item {
+    padding: 5px;
+  }
+
+  .host-info-label {
+    width: 60px;
+    font-size: 0.9em;
+  }
+
+  .host-info-value {
+    font-size: 0.85em;
+    padding: 3px 5px;
+    max-width: calc(100% - 70px);
+  }
+
+  .copy-button {
+    padding: 3px 6px;
+    margin-left: 5px;
+    width: 60px;
+    font-size: 0.7em;
+  }
+
+  /* Button adjustments */
+  .control-buttons {
+    gap: 8px;
+  }
+
+  .action-button {
+    padding: 8px 10px;
+    min-width: 0;
+    width: 30%;
+    font-size: 0.85em;
+  }
+
+  /* Table adjustments */
+  .vnc-ports-table {
+    font-size: 0.75em;
+  }
+
+  .vnc-ports-table th, 
+  .vnc-ports-table td {
+    padding: 5px 3px;
+  }
+
+  .vnc-ports-table th:nth-child(3),
+  .vnc-ports-table td:nth-child(3) {
+    display: none; /* Hide the third column on small screens */
+  }
+
+  /* Setup checkboxes */
+  .settings-row {
+    gap: 5px;
+  }
+
+  .setup {
+    width: 100%;
+    font-size: 0.9em;
+  }
+
+  /* Copyright section */
+  .copyright {
+    margin: 10px 3% 5px 3%;
+    width: 94%;
+  }
+
+  .clt-logo img {
+    height: 40px;
+  }
+
+  .copyright-desc {
+    font-size: 0.7em;
+    padding: 5px;
+  }
+
+  /* Specific styles for 450x660 window */
+  @media (max-width: 460px) and (max-height: 700px) {
+    .copyright {
+      margin-top: 5px;
+    }
+
+    .action-button {
+      padding: 6px 8px;
+    }
+
+    .card-content {
+      padding: 5px 0;
+    }
+
+    .host-info-container {
+      gap: 3px;
+    }
+
+    .host-info-item {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .host-info-label {
+      margin-bottom: 4px;
+      width: 100%;
+    }
+
+    .host-info-value-container {
+      width: 100%;
+    }
+
+    .host-info-value {
+      max-width: calc(100% - 70px);
+    }
+
+    .vnc-ports-table th, 
+    .vnc-ports-table td {
+      padding: 4px 2px;
+      font-size: 0.9em;
+    }
+
+    .vnc-ports-table th:nth-child(4),
+    .vnc-ports-table td:nth-child(4) {
+      display: none; /* Hide the fourth column on very small screens */
+    }
   }
 }

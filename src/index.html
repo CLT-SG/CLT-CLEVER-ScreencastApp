@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>CLEVER VNC Client</title>
   <link rel="stylesheet" href="assets/css/style.css">
   <link rel="stylesheet" href="assets/css/fontawesome.min.css">
@@ -36,9 +36,10 @@
       </div>
     </div>
     
+    <!-- Connection Information -->
     <div class="host-info-card">
       <div class="card-header">
-        <h2>Connection Information</h2>
+        <h2>Connection Info</h2>
         <div class="connection-indicator">
           <span>Status:</span>
           <span class="status-dot offline" id="status-indicator"></span>
@@ -46,33 +47,46 @@
       </div>
       
       <div class="host-info-container">
-        <div class="host-info-item">
-          <span class="host-info-label">IP Address:</span>
-          <span id="ip-address" class="host-info-value copy-value" title="Click to copy">Checking...</span>
-          <button class="copy-button" data-target="ip-address">Copy</button>
+        <div class="host-info-row">
+          <div class="host-info-item">
+            <span class="host-info-label">IP:</span>
+            <div class="host-info-value-container">
+              <span id="ip-address" class="host-info-value copy-value" title="Click to copy">Checking...</span>
+              <button class="copy-button" data-target="ip-address">Copy</button>
+            </div>
+          </div>
         </div>
-        <div class="host-info-item">
-          <span class="host-info-label">Hostname:</span>
-          <span id="hostname" class="host-info-value copy-value" title="Click to copy">Checking...</span>
-          <button class="copy-button" data-target="hostname">Copy</button>
+        <div class="host-info-row">
+          <div class="host-info-item">
+            <span class="host-info-label">Host:</span>
+            <div class="host-info-value-container">
+              <span id="hostname" class="host-info-value copy-value" title="Click to copy">Checking...</span>
+              <button class="copy-button" data-target="hostname">Copy</button>
+            </div>
+          </div>
         </div>
-        <div class="host-info-item">
-          <span class="host-info-label">FQDN:</span>
-          <span id="hostname-local" class="host-info-value copy-value" title="Click to copy">Checking...</span>
-          <button class="copy-button" data-target="hostname-local">Copy</button>
+        <div class="host-info-row">
+          <div class="host-info-item">
+            <span class="host-info-label">FQDN:</span>
+            <div class="host-info-value-container">
+              <span id="hostname-local" class="host-info-value copy-value" title="Click to copy">Checking...</span>
+              <button class="copy-button" data-target="hostname-local">Copy</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
+    <!-- Control Panel -->
     <div class="control-panel">
       <div class="control-buttons">
         <button id="start-button" class="action-button start-button">
           <span class="button-icon">▶</span>
-          <span class="button-text">Start Sharing</span>
+          <span class="button-text">Start</span>
         </button>
         <button id="stop-button" class="action-button stop-button">
           <span class="button-icon">■</span>
-          <span class="button-text">Stop Sharing</span>
+          <span class="button-text">Stop</span>
         </button>
         <button id="restart-button" class="action-button reset-button">
           <span class="button-icon">↻</span>
@@ -81,6 +95,7 @@
       </div>
     </div>
     
+    <!-- Available VNC Connections -->
     <div class="vnc-ports-container card">
       <h3>Available VNC Connections</h3>
       <div id="vnc-ports-info" class="card-content">
@@ -91,6 +106,7 @@
       </div>
     </div>
 
+    <!-- Settings -->
     <div class="settings-panel card">
       <h3>Settings</h3>
       <div class="card-content">
@@ -98,12 +114,12 @@
           <div class="setup">
             <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="autostartup" id="autostartup"
               checked>
-            <label for="autostartup">Auto startup when PC starts</label>
+            <label for="autostartup">Auto startup on PC boot</label>
           </div>
           <div class="setup">
             <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="autoshare" id="autoshare"
               checked>
-            <label for="autoshare">Auto share when app launches</label>
+            <label for="autoshare">Auto share on launch</label>
           </div>
           <div class="setup">
             <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="audio" id="audio" checked>
@@ -120,10 +136,10 @@
 
   <div class="copyright">
     <div class="clt-logo">
-      <img src="assets/media/logo.png" alt="Company Logo" style="height: 50px;">
+      <img src="assets/media/logo.png" alt="Company Logo" style="height: 40px;">
     </div>
     <div class="copyright-desc">
-      © 2000-<span id="current-year"></span> by Closed-loop Technology Pte Ltd.<br>
+      © 2000-<span id="current-year"></span> Closed-loop Technology<br>
       All rights reserved.
     </div>
   </div>
