@@ -202,8 +202,8 @@ strong {
 }
 
 .status-dot.ready {
-  background-color: #ffff33;
-  box-shadow: 0 0 5px #ffff33;
+  background-color: #33ff33; /* Changed from #ffff33 (yellow) to #33ff33 (green) */
+  box-shadow: 0 0 5px #33ff33; /* Updated shadow to match green color */
 }
 
 .host-input {
@@ -308,4 +308,63 @@ strong {
 .status-dot.online,
 .status-dot.ready {
   animation: pulse 2s infinite;
+}
+
+.host-info-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 15px 5% 15px 5%;
+  gap: 5px;
+}
+
+.host-info-item {
+  display: flex;
+  justify-content: space-between;
+  width: 90%;
+  max-width: 500px;
+}
+
+.host-info-label {
+  font-weight: bold;
+  margin-right: 10px;
+}
+
+.host-info-value {
+  color: #eee;
+  font-family: monospace;
+  font-size: 1em;
+}
+
+.vnc-ports-container {
+  margin: 20px 5% 20px 5%;
+  text-align: center;
+}
+
+.vnc-ports-container h3 {
+  font-size: 1.2em;
+  margin-bottom: 10px;
+}
+
+.vnc-ports-table {
+  width: 100%;
+  margin: 0 auto;
+  border-collapse: collapse;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.vnc-ports-table th, 
+.vnc-ports-table td {
+  padding: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: center;
+}
+
+.vnc-ports-table th {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.vnc-ports-table tr:hover {
+  background-color: rgba(255, 255, 255, 0.05);
 }

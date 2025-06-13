@@ -1,85 +1,85 @@
 # CLEVER VNC Client
 
-CLEVER VNC Client is an Electron-based application that provides an easy way to share VNC screens via WebSockets.
+CLEVER VNC Client is a desktop application built with Electron that provides VNC client functionality with both IP-based and hostname-based connections.
 
 ## Features
 
-- Automatic VNC server detection
-- WebSocket to VNC proxy
-- Simple UI for configuration
+- Multiple connection options: IP address, short hostname, and FQDN (.local) hostname
+- Automatic detection of available VNC ports (5900-5905)
+- WebSocket-based VNC streaming
+- Audio streaming through WebRTC (optional)
+- Auto-restart functionality
 - System tray integration
-- Audio streaming support
+- Frameless window design
 
-## Requirements
+## Connection Options
 
-- Node.js 14.x or higher
-- Electron 22.x
-- VNC Server (such as TightVNC) running on the host machine
+The application supports multiple ways to connect to the VNC server:
 
-## Usage
+1. **IP Address**: Traditional IP-based connection (e.g., `192.168.1.100:5900`)
+2. **Short Hostname**: Connect using just the computer name (e.g., `USER-PC:5900`)
+3. **FQDN Hostname**: Connect using hostname.local format (e.g., `USER-PC.local:5900`)
 
-The application will automatically detect VNC servers running on ports 5900-5905 and make them available through WebSockets.
+The hostname options make it easier to connect within local networks, especially with DHCP where IP addresses may change.
 
-### Configuration
+## System Requirements
 
-The following settings can be configured:
+- Operating System: Windows 10 or later, macOS 10.14+, or modern Linux distributions
+- VNC server installed and running (e.g., TightVNC, UltraVNC, RealVNC)
 
-- Auto startup when PC starts
-- Audio streaming
-- Auto restart interval
+## Installation
 
-## Development
-
-```bash
-# Install dependencies
-npm install
-
-# Run the application
-npm start
-
-# Build the application
-npm run build
-```
-
-## Architecture
-
-The application now uses a simplified architecture:
-- WebSockets proxy for VNC connections
-- Audio streaming via separate WebSocket connection
-- Electron main process for managing the application window and system tray
-- Renderer process for user interface
-
-## License
-
-Copyright © 2000-2023 by Closed-loop Technology Pte Ltd. All rights reserved.
-  ```bash
-  npm run ubuntu32
-  ```
-
-- Ubuntu/Linux 64-bit:
-  ```bash
-  npm run ubuntu64
-  ```
+1. Download the latest release for your platform from the releases page
+2. Run the installer and follow the prompts
+3. Launch CLEVER VNC Client from the Start Menu or Applications folder
 
 ## Configuration
 
-The application can be configured through the `config.js` file:
+The client allows customization of several settings:
 
-- `pcname`: Computer name for identification (default: "DESKTOP")
-- `cleverserver`: Array of CLEVER server addresses to connect to
-- `autorestart`: Time interval for automatic client restart in milliseconds
-- `autostartup`: Enable/disable application launch at system startup
-- `audio`: Enable/disable audio streaming
+- **Auto-startup**: Launch automatically when the computer starts
+- **Audio streaming**: Enable/disable audio streaming functionality
+- **Auto-restart interval**: Set the frequency to refresh the connection
 
-## Using Hostname Instead of IP
+## Development
 
-CLEVER VNC Client uses hostname-based addressing which provides several benefits:
-- More resilient to network changes (DHCP-assigned IPs)
-- Easier identification of devices in the network
-- Better integration with network security policies
+### Setup
 
-The application automatically:
-1. Detects the system hostname
+```bash
+# Clone the repository
+git clone https://github.com/closed-loop/clever-vncclient.git
+
+# Navigate into the project directory
+cd clever-vncclient
+
+# Install dependencies
+npm install
+
+# Run the application in development mode
+npm start
+```
+
+### Building
+
+```bash
+# Build for current platform
+npm run build
+
+# Build for specific platforms
+npm run build:win
+npm run build:mac
+npm run build:linux
+```
+
+## License
+
+This is proprietary software owned by Closed-loop Technology Pte. Ltd. See LICENSE file for more information.
+
+## Support
+
+For support, please contact Closed-loop Technology Pte. Ltd:
+- Email: support@closed-loop.biz
+- Website: www.closed-loop.biz
 2. Registers the hostname with the CLEVER controller
 3. Uses the hostname for VNC connection establishment
 

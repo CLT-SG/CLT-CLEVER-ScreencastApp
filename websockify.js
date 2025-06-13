@@ -1,86 +1,93 @@
 const WebSocket = require('ws')
 const net = require('net')
+const os = require('os')
 const log = require('electron-log')
 
 /**
- * Simplified websockify module that only handles direct VNC connections
- * without master/client concepts
+ * Enhanced websockify implementation with hostname support
  * @param {Object} server - HTTPS server instance
- * @param {Array} ports - Array of port objects with path and target properties
+ * @param {Array} targets - Array of target configurations including hostname
  */
-module.exports = function(server, ports) {
-  const wss = new WebSocket.Server({ 
-    server,
-    path: '/websockify'
-  })
-
-  log.info(`Websockify server starting with ${ports.length} port mappings`)
+module.exports = function(server, targets) {
+  const wss = new WebSocket.Server({ server })
+  const hostname = os.hostname()
+  const hostnameLocal = `${hostname}.local`
   
-  wss.on('connection', function(ws, req) {
-    const pathName = req.url.split('?')[0]
-    log.info(`New websockify connection to path: ${pathName}`)
+  log.info(`Starting websockify with hostname: ${hostname} and ${hostnameLocal}`)
+  log.info(`Configuring ${targets.length} VNC targets`)
+  
+  wss.on('connection', function connection(ws, req) {
+    const path = req.url
+    log.info(`New connection on path: ${path}`)
     
-    // Find matching port configuration
-    const portConfig = ports.find(p => req.url.includes(p.path))
+    // Find matching target for the requested path
+    let targetConfig = targets.find(t => t.path === path)
     
-    if (!portConfig) {
-      log.error(`No port configuration found for path: ${pathName}`)
-      ws.close(1000, 'No matching port configuration')
+    if (!targetConfig) {
+      log.warn(`No target found for path: ${path}`)
+      ws.close(1000, 'No matching target')
       return
     }
     
-    const target = portConfig.target
-    log.info(`Connecting to VNC target: ${target}`)
+    // Use the IP address for the actual connection (most reliable)
+    const targetAddress = targetConfig.target
+    const [host, port] = targetAddress.split(':')
     
-    const [host, port] = target.split(':')
+    log.info(`Creating connection to VNC at ${targetAddress}`)
     
     // Create TCP connection to VNC server
-    const tcpSocket = net.createConnection(parseInt(port), host, () => {
-      log.info(`TCP connection established to ${host}:${port}`)
-    })
+    const tcpSocket = new net.Socket()
     
-    tcpSocket.on('data', (data) => {
-      try {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(data)
-        }
-      } catch (error) {
-        log.error(`Error sending data to WebSocket: ${error.message}`)
-      }
-    })
-    
-    tcpSocket.on('error', (error) => {
-      log.error(`TCP socket error: ${error.message}`)
+    // Handle data from VNC server and forward to WebSocket
+    tcpSocket.on('data', function(data) {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.close(1001, 'TCP connection error')
+        ws.send(data)
       }
     })
     
-    tcpSocket.on('end', () => {
-      log.info('TCP connection ended')
+    // Handle TCP socket close and close WebSocket
+    tcpSocket.on('close', function() {
+      log.info(`TCP connection closed for ${targetAddress}`)
       if (ws.readyState === WebSocket.OPEN) {
-        ws.close(1000, 'TCP connection ended')
+        ws.close()
       }
     })
     
-    ws.on('message', (message) => {
-      try {
-        tcpSocket.write(message)
-      } catch (error) {
-        log.error(`Error writing to TCP socket: ${error.message}`)
+    // Handle errors
+    tcpSocket.on('error', function(err) {
+      log.error(`TCP socket error: ${err.message}`)
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close(1001, 'Connection error')
       }
     })
     
-    ws.on('close', () => {
-      log.info('WebSocket connection closed')
-      tcpSocket.end()
+    // Connect to the VNC server
+    tcpSocket.connect(parseInt(port), host, function() {
+      log.info(`Connected to VNC server at ${targetAddress}`)
     })
     
-    ws.on('error', (error) => {
-      log.error(`WebSocket error: ${error.message}`)
-      tcpSocket.end()
+    // Handle data from WebSocket and forward to VNC server
+    ws.on('message', function(message) {
+      tcpSocket.write(message)
+    })
+    
+    // Handle WebSocket close
+    ws.on('close', function() {
+      log.info('WebSocket closed')
+      tcpSocket.destroy()
+    })
+    
+    // Handle WebSocket errors
+    ws.on('error', function(err) {
+      log.error(`WebSocket error: ${err.message}`)
+      tcpSocket.destroy()
     })
   })
   
-  log.info('Websockify server initialized successfully')
+  log.info('Websockify initialized successfully')
+  
+  // Log available connections for debugging
+  targets.forEach(target => {
+    log.info(`VNC Connection mapped: ${target.path} -> IP: ${target.target}, Hostname: ${target.hostname}:${target.port}, FQDN: ${target.hostnameLocal}:${target.port}`)
+  })
 }

@@ -56,7 +56,8 @@ contextBridge.exposeInMainWorld('api', {
   minimize: () => ipcRenderer.invoke('minimize-window'),
   maximize: () => ipcRenderer.invoke('maximize-window'),
   close: () => ipcRenderer.invoke('close-window'),
-  openAbout: () => ipcRenderer.invoke('open-about')
+  openAbout: () => ipcRenderer.invoke('open-about'),
+  getHostInfo: () => ipcRenderer.invoke('get-host-info')
 })
 
 // Log preload execution
