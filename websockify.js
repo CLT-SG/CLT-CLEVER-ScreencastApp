@@ -1,78 +1,135 @@
 const net = require('net')
 const WebSocketServer = require('ws').Server
+const log = require('electron-log')
 
-const log = msg => console.log(new Date(), msg)
-
+/**
+ * Creates WebSocket to TCP proxies for VNC connections
+ * @param {Object} server - The HTTPS server instance
+ * @param {Array} sockets - Array of socket configurations
+ */
 module.exports = (server, sockets) => {
-	let targets = []
-	if (typeof (sockets) == "object") {
-		sockets.forEach(t => {
-			targets.push({
-				host: t.target.split(':')[0],
-				port: t.target.split(':')[1],
-				connection: {},
-				path: t.path
-			})
-		})
-	}
+  // Validate inputs
+  if (!server) {
+    log.error('No server provided to websockify')
+    return
+  }
 
-	let clientAddr = null
-	for (let target of targets) {
+  // Initialize targets array
+  const targets = []
+  
+  // Process socket configurations
+  if (Array.isArray(sockets) && sockets.length > 0) {
+    log.info(`Setting up ${sockets.length} websockify targets`)
+    
+    sockets.forEach(t => {
+      if (!t.target || !t.path) {
+        log.warn(`Invalid socket config: ${JSON.stringify(t)}`)
+        return
+      }
+      
+      const [host, port] = t.target.split(':')
+      targets.push({
+        host,
+        port,
+        connection: {},
+        path: t.path
+      })
+    })
+  } else {
+    log.warn('No valid sockets provided to websockify')
+  }
 
-		target.wss = new WebSocketServer({
-			noServer: true,
-			...target.path
-		})
+  // Set up WebSocket servers for each target
+  targets.forEach(target => {
+    try {
+      target.wss = new WebSocketServer({
+        noServer: true
+      })
 
-		target.wss.on('connection', (client, req) => {
-			let cId = Date.now()
-			if (!clientAddr) clientAddr = client._socket.remoteAddress
+      target.wss.on('connection', (client, req) => {
+        const cId = Date.now()
+        const clientAddr = client._socket.remoteAddress || 'unknown'
+        
+        // Create TCP connection to target VNC server
+        try {
+          target.connection[cId] = net.createConnection(target.port, target.host, () => {
+            log.info(`${clientAddr} -> Connected to target on ${target.host}:${target.port}`)
+          })
 
-			target.connection[cId] = net.createConnection(target.port, target.host, () => {
-				log(`${clientAddr} -> Connected to target on ${target.host}:${target.port}`)
-			})
+          // Forward data from VNC server to WebSocket client
+          target.connection[cId].on('data', data => {
+            try {
+              if (client.readyState === client.OPEN) {
+                client.send(data)
+              }
+            } catch (e) {
+              log.warn(`${clientAddr} -> Error sending data to client: ${e.message}`)
+              target.connection[cId].end()
+            }
+          })
 
-			target.connection[cId].on('data', data => {
-				try {
-					client.send(data)
-				} catch (e) {
-					log(`${clientAddr} -> Client closed, cleaning up target`)
-					target.connection[cId].end()
-				}
-			})
+          // Handle TCP connection end
+          target.connection[cId].on('end', () => {
+            log.info(`${clientAddr} -> Target disconnected`)
+            if (client.readyState === client.OPEN) {
+              client.close()
+            }
+          })
 
-			target.connection[cId].on('end', () => {
-				log(`${clientAddr} -> Target disconnected`)
-				client.close()
-			})
+          // Handle TCP connection errors
+          target.connection[cId].on('error', (err) => {
+            log.error(`${clientAddr} -> Connection error: ${err.message}`)
+            target.connection[cId].end()
+            if (client.readyState === client.OPEN) {
+              client.close()
+            }
+          })
 
-			target.connection[cId].on('error', () => {
-				log(`${clientAddr} -> Connection error`)
-				target.connection[cId].end()
-				client.close()
-			})
+          // Forward data from WebSocket client to VNC server
+          client.on('message', (msg) => {
+            if (target.connection[cId] && !target.connection[cId].destroyed) {
+              target.connection[cId].write(msg)
+            }
+          })
 
-			client.on('message', msg => {
-				target.connection[cId].write(msg)
-			})
+          // Handle WebSocket client closure
+          client.on('close', (code, reason) => {
+            log.info(`WebSocket client disconnected: ${code} [ ${reason || 'No reason provided'} ]`)
+            if (target.connection[cId]) {
+              target.connection[cId].end()
+            }
+          })
 
-			client.on('close', (code, reason) => {
-				log(`WebSocket client disconnected: ${code} [ ${reason} ]`)
-				target.connection[cId].end()
-			})
+          // Handle WebSocket client errors
+          client.on('error', (error) => {
+            log.error(`${clientAddr} -> WebSocket client error: ${error.message}`)
+            if (target.connection[cId]) {
+              target.connection[cId].end()
+            }
+          })
+        } catch (err) {
+          log.error(`Failed to create connection to ${target.host}:${target.port}: ${err.message}`)
+          if (client.readyState === client.OPEN) {
+            client.close(1011, 'Server error');
+          }
+        }
+      })
 
-			client.on('error', error => {
-				log(`${clientAddr} -> WSS Client error`)
-				target.connection[cId].end()
-			})
+      // Handle upgrade requests
+      server.on('upgrade', (request, socket, head) => {
+        if (request.url === target.path) {
+          target.wss.handleUpgrade(request, socket, head, (ws) => {
+            target.wss.emit('connection', ws, request)
+          })
+        }
+      })
+      
+      log.info(`Websockify target configured for ${target.host}:${target.port} on path ${target.path}`)
+    } catch (err) {
+      log.error(`Failed to set up websockify target: ${err.message}`)
+    }
+  })
 
-		})
-		server.on('upgrade', (request, socket, head) => {
-			if (request.url == target.path) {
-				target.wss.handleUpgrade(request, socket, head, (wss) => {
-					target.wss.emit('connection', wss, request)
-				})
-			}
-		})
-	}
+  // Return the configured targets
+  return targets
 }
