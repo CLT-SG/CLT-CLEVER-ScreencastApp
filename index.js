@@ -258,14 +258,88 @@ try {
       // Set menu - fixed for Electron v22
       updateMenu()
 
-      // Create tray icon
+      // Create tray icon with enhanced menu
       appIcon = new Tray(iconPath)
       const contextMenu = Menu.buildFromTemplate([
         {
-          label: 'Show App',
+          label: 'Connection Status',
+          enabled: false,
+        },
+        {
+          type: 'separator'
+        },
+        {
+          label: 'Start Sharing',
+          click: function () {
+            win.webContents.send('tray-action', 'start');
+          }
+        },
+        {
+          label: 'Stop Sharing',
+          click: function () {
+            win.webContents.send('tray-action', 'stop');
+          }
+        },
+        {
+          type: 'separator'
+        },
+        {
+          label: 'Show Application',
           click: function () {
             win.show()
           }
+        },
+        {
+          label: 'Connection Info',
+          submenu: [
+            {
+              label: `Hostname: ${hostname}`,
+              enabled: false
+            },
+            {
+              label: `FQDN: ${hostnameLocal}`,
+              enabled: false
+            }
+          ]
+        },
+        {
+          type: 'separator'
+        },
+        {
+          label: 'Settings',
+          submenu: [
+            {
+              label: 'Auto Startup',
+              type: 'checkbox',
+              checked: config.autostartup,
+              click: (item) => {
+                replaceConfig('autostartup', `exports.autostartup = ${item.checked}`);
+                if (item.checked) {
+                  screencastAutoLaunch.enable();
+                } else {
+                  screencastAutoLaunch.disable();
+                }
+              }
+            },
+            {
+              label: 'Enable Audio',
+              type: 'checkbox',
+              checked: config.audio,
+              click: (item) => {
+                replaceConfig('audio', `exports.audio = ${item.checked}`);
+              }
+            }
+          ]
+        },
+        {
+          label: 'About',
+          click: async () => {
+            const { shell } = require('electron')
+            await shell.openExternal('https://www.closed-loop.biz/contact.html')
+          }
+        },
+        {
+          type: 'separator'
         },
         {
           label: 'Quit',
@@ -276,6 +350,42 @@ try {
           }
         }
       ])
+
+      // Update the first menu item to show connection status
+      function updateTrayMenu(status) {
+        const statusLabel = status ? 'Connected' : 'Disconnected';
+        contextMenu.items[0].label = `Status: ${statusLabel}`;
+        appIcon.setContextMenu(contextMenu);
+      }
+
+      // Add a new IPC handler for updating the tray menu status
+      ipcMain.handle('update-tray-status', (event, status) => {
+        updateTrayMenu(status);
+      });
+
+      // Update tray icon with tooltip and balloon notification
+      ipcMain.handle('tray-icon', async (event, trayimg) => {
+        const titlenotif = "Video Wall Screencast & VNC Notification"
+        if (trayimg === 'publish') {
+          appIcon.setImage(publishPath)
+          appIcon.setToolTip('Screencast & VNC is running')
+          updateTrayMenu(true);
+          appIcon.displayBalloon({
+            title: titlenotif,
+            content: 'Screencast & VNC has started sharing',
+            iconType: 'info'
+          })
+        } else if (trayimg === 'stopped') {
+          appIcon.setImage(iconPath)
+          appIcon.setToolTip('Screencast & VNC is not sharing')
+          updateTrayMenu(false);
+          appIcon.displayBalloon({
+            title: titlenotif,
+            content: 'Screencast & VNC has stopped sharing',
+            iconType: 'warning'
+          })
+        }
+      })
 
       // New IPC handlers for window controls
       ipcMain.handle('minimize-window', () => {
@@ -329,63 +439,48 @@ try {
         }
       })
 
-      // Update tray icon
-      ipcMain.handle('tray-icon', async (event, trayimg) => {
-        const titlenotif = "Video Wall Screencast & VNC Notification"
-        if (trayimg === 'publish') {
-          appIcon.setImage(publishPath)
-          appIcon.setToolTip('Screencast & VNC is running.')
-          appIcon.displayBalloon({
-            title: titlenotif,
-            content: 'Screencast & VNC start to sharing.'
-          })
-        } else if (trayimg === 'stopped') {
-          appIcon.setImage(iconPath)
-          appIcon.setToolTip('Cast not started.')
-          appIcon.displayBalloon({
-            title: titlenotif,
-            content: 'Screencast & VNC stop to sharing.'
-          })
-        }
-      })
-
       // Scan and set up VNC ports
       ipcMain.handle('port-extended', async () => {
         log.info('Scanning VNC ports')
         const ports = ['5900', '5901', '5902', '5903', '5904', '5905']
         const availablePorts = []
         
-        await new Promise((resolve) => {
-          async.eachSeries(ports, async (port, next) => {
-            try {
-              const status = await isReachable(`127.0.0.1:${port}`, { timeout: 10000 })
-              if (status) {
-                log.info(`VNC port ${port} is available`)
-                const screenPath = `/screen${port.substring(3, 4)}`
-                // Add both hostname formats for each port
-                availablePorts.push({
-                  target: `${ipaddress}:${port}`,
-                  path: screenPath,
-                  hostname: hostname,
-                  hostnameLocal: hostnameLocal,
-                  port: port
+        try {
+          await new Promise((resolve) => {
+            async.eachSeries(ports, (port, callback) => {
+              isReachable(`127.0.0.1:${port}`, { timeout: 10000 })
+                .then(status => {
+                  if (status) {
+                    log.info(`VNC port ${port} is available`)
+                    const screenPath = `/screen${port.substring(3, 4)}`
+                    // Add both hostname formats for each port
+                    availablePorts.push({
+                      target: `${ipaddress}:${port}`,
+                      path: screenPath,
+                      hostname: hostname,
+                      hostnameLocal: hostnameLocal,
+                      port: port
+                    })
+                  }
+                  callback() // Properly call the callback function
                 })
+                .catch(err => {
+                  log.error(`Error checking port ${port}: ${err}`)
+                  callback() // Make sure to call callback even on error
+                })
+            }, () => {
+              if (availablePorts.length > 0) {
+                log.info(`Available ports: ${availablePorts.map(p => p.target).join(', ')}`)
+                websockify(server, availablePorts)
+              } else {
+                log.warn('No VNC ports available')
               }
-              next()
-            } catch (err) {
-              log.error(`Error checking port ${port}:`, err)
-              next()
-            }
-          }, () => {
-            if (availablePorts.length > 0) {
-              log.info(`Available ports: ${availablePorts.map(p => p.target).join(', ')}`)
-              websockify(server, availablePorts)
-            } else {
-              log.warn('No VNC ports available')
-            }
-            resolve()
+              resolve()
+            })
           })
-        })
+        } catch (err) {
+          log.error(`Error in port scanning: ${err}`)
+        }
         
         return availablePorts
       })

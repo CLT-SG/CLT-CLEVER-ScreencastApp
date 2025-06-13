@@ -1,15 +1,71 @@
 // Main renderer process code
 document.addEventListener('DOMContentLoaded', () => {
-  // Get references to window control buttons if they exist
+  // Get references to UI elements
   const minimizeButton = document.getElementById('minimize-button');
   const maximizeButton = document.getElementById('maximize-button');
   const closeButton = document.getElementById('close-button');
-  const reloadButton = document.getElementById('reload-button');
   const versionSpan = document.getElementById('app-version');
-  const statusDot = document.querySelector('.status-dot');
+  const statusDot = document.getElementById('status-indicator');
   const startButton = document.getElementById('start-button');
   const stopButton = document.getElementById('stop-button');
   const restartButton = document.getElementById('restart-button');
+  const notificationArea = document.getElementById('notification-area');
+  
+  // Track connection state
+  let isConnected = false;
+
+  // Function to show notifications
+  function showNotification(message, type = 'info', duration = 5000) {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerHTML = `
+      <span class="notification-message">${message}</span>
+      <button class="notification-close">×</button>
+    `;
+    
+    notificationArea.appendChild(notification);
+    
+    // Add event listener to close button
+    notification.querySelector('.notification-close').addEventListener('click', () => {
+      notification.classList.add('notification-hiding');
+      setTimeout(() => {
+        notification.remove();
+      }, 300);
+    });
+    
+    // Auto remove after duration
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.classList.add('notification-hiding');
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.remove();
+          }
+        }, 300);
+      }
+    }, duration);
+  }
+
+  // Copy to clipboard functionality
+  document.querySelectorAll('.copy-button').forEach(button => {
+    button.addEventListener('click', (e) => {
+      const targetId = e.target.getAttribute('data-target');
+      const textToCopy = document.getElementById(targetId).textContent;
+      
+      navigator.clipboard.writeText(textToCopy)
+        .then(() => {
+          button.textContent = 'Copied!';
+          setTimeout(() => {
+            button.textContent = 'Copy';
+          }, 2000);
+          showNotification(`Copied ${textToCopy} to clipboard`, 'success', 3000);
+        })
+        .catch(err => {
+          console.error('Error copying text: ', err);
+          showNotification('Failed to copy text', 'error', 3000);
+        });
+    });
+  });
 
   // Fetch version and update UI
   if (versionSpan) {
@@ -39,38 +95,63 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (reloadButton) {
-    reloadButton.addEventListener('click', () => {
-      window.api.reloadPage();
-    });
+  // Listen for tray actions
+  window.api.onTrayAction((action) => {
+    if (action === 'start') {
+      startSharing();
+    } else if (action === 'stop') {
+      stopSharing();
+    }
+  });
+
+  // Start/Stop/Restart buttons with enhanced functionality
+  function startSharing() {
+    window.api.setTrayIcon('publish');
+    if (statusDot) {
+      statusDot.classList.remove('offline');
+      statusDot.classList.add('online');
+    }
+    isConnected = true;
+    window.api.updateTrayStatus(true);
+    showNotification('VNC sharing started successfully', 'success');
+    console.log('VNC sharing started');
+    
+    // Update UI elements
+    startButton.disabled = true;
+    stopButton.disabled = false;
+  }
+  
+  function stopSharing() {
+    window.api.setTrayIcon('stopped');
+    if (statusDot) {
+      statusDot.classList.remove('online');
+      statusDot.classList.add('offline');
+    }
+    isConnected = false;
+    window.api.updateTrayStatus(false);
+    showNotification('VNC sharing stopped', 'info');
+    console.log('VNC sharing stopped');
+    
+    // Update UI elements
+    startButton.disabled = false;
+    stopButton.disabled = true;
   }
 
-  // Start/Stop/Restart buttons with simplified functionality
   if (startButton) {
-    startButton.addEventListener('click', () => {
-      window.api.setTrayIcon('publish');
-      if (statusDot) {
-        statusDot.classList.remove('offline');
-        statusDot.classList.add('online');
-      }
-      console.log('VNC sharing started');
-    });
+    startButton.addEventListener('click', startSharing);
   }
 
   if (stopButton) {
-    stopButton.addEventListener('click', () => {
-      window.api.setTrayIcon('stopped');
-      if (statusDot) {
-        statusDot.classList.remove('online');
-        statusDot.classList.add('offline');
-      }
-      console.log('VNC sharing stopped');
-    });
+    stopButton.disabled = true; // Initially disabled
+    stopButton.addEventListener('click', stopSharing);
   }
 
   if (restartButton) {
     restartButton.addEventListener('click', () => {
-      window.api.restartApp();
+      showNotification('Restarting application...', 'info');
+      setTimeout(() => {
+        window.api.restartApp();
+      }, 1000);
     });
   }
 
@@ -84,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const value = e.target.checked;
           if (setting) {
             window.api.saveConfig(setting, `exports.${setting} = ${value}`, value);
+            showNotification(`Setting "${setting}" ${value ? 'enabled' : 'disabled'}`, 'info');
           }
         });
       }
@@ -110,21 +192,85 @@ document.addEventListener('DOMContentLoaded', () => {
       hostnameLocalElement.textContent = hostInfo.hostnameLocal;
       console.log(`Hostname.local detected: ${hostInfo.hostnameLocal}`);
     }
+    
+    showNotification('Host information detected', 'success');
   }).catch(err => {
     console.error('Error getting host information:', err);
+    showNotification('Failed to detect host information', 'error');
   });
 
-  // Scan for VNC ports
+  // Create a reusable function for warning and error icons using SVG
+  function createSVGIcon(type) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", "40");
+    svg.setAttribute("height", "40");
+    svg.setAttribute("viewBox", "0 0 40 40");
+    
+    if (type === 'warning') {
+      // Create warning triangle
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", "M20 5 L35 35 L5 35 Z");
+      path.setAttribute("fill", "#ffc107");
+      path.setAttribute("stroke", "#ff9800");
+      path.setAttribute("stroke-width", "2");
+      svg.appendChild(path);
+      
+      // Add exclamation mark
+      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      text.setAttribute("x", "20");
+      text.setAttribute("y", "30");
+      text.setAttribute("text-anchor", "middle");
+      text.setAttribute("fill", "white");
+      text.setAttribute("font-size", "20");
+      text.setAttribute("font-weight", "bold");
+      text.textContent = "!";
+      svg.appendChild(text);
+    } 
+    else if (type === 'error') {
+      // Create error circle
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", "20");
+      circle.setAttribute("cy", "20");
+      circle.setAttribute("r", "17");
+      circle.setAttribute("fill", "#dc3545");
+      svg.appendChild(circle);
+      
+      // Add X mark
+      const line1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line1.setAttribute("x1", "12");
+      line1.setAttribute("y1", "12");
+      line1.setAttribute("x2", "28");
+      line1.setAttribute("y2", "28");
+      line1.setAttribute("stroke", "white");
+      line1.setAttribute("stroke-width", "3");
+      svg.appendChild(line1);
+      
+      const line2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line2.setAttribute("x1", "28");
+      line2.setAttribute("y1", "12");
+      line2.setAttribute("x2", "12");
+      line2.setAttribute("y2", "28");
+      line2.setAttribute("stroke", "white");
+      line2.setAttribute("stroke-width", "3");
+      svg.appendChild(line2);
+    }
+    
+    return svg;
+  }
+
+  // Scan for VNC ports with enhanced UI
   window.api.scanPortsExtended().then(ports => {
     console.log('Available VNC ports:', ports);
-    if (ports.length > 0 && statusDot) {
-      statusDot.classList.add('ready');
+    
+    const portsContainer = document.getElementById('vnc-ports-info');
+    if (portsContainer) {
+      // Clear loading spinner
+      portsContainer.innerHTML = '';
       
-      // Display port information
-      const portsContainer = document.getElementById('vnc-ports-info');
-      if (portsContainer) {
-        // Clear previous content
-        portsContainer.innerHTML = '';
+      if (ports.length > 0) {
+        if (statusDot) {
+          statusDot.classList.add('ready');
+        }
         
         // Create table header
         const table = document.createElement('table');
@@ -133,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Add header row
         const thead = document.createElement('thead');
         const headerRow = document.createElement('tr');
-        ['Screen', 'IP Address', 'Hostname', 'Hostname.local'].forEach(headerText => {
+        ['Screen', 'IP Address', 'Hostname', 'Hostname.local', 'Actions'].forEach(headerText => {
           const th = document.createElement('th');
           th.textContent = headerText;
           headerRow.appendChild(th);
@@ -154,31 +300,125 @@ document.addEventListener('DOMContentLoaded', () => {
           // IP:Port
           const ipCell = document.createElement('td');
           ipCell.textContent = port.target;
+          ipCell.className = 'copy-value';
+          ipCell.title = 'Click to copy';
+          ipCell.addEventListener('click', () => {
+            navigator.clipboard.writeText(port.target);
+            showNotification(`Copied ${port.target} to clipboard`, 'success', 2000);
+          });
           row.appendChild(ipCell);
           
           // Hostname:Port
           const hostnameCell = document.createElement('td');
-          hostnameCell.textContent = `${port.hostname}:${port.port}`;
+          const hostnameValue = `${port.hostname}:${port.port}`;
+          hostnameCell.textContent = hostnameValue;
+          hostnameCell.className = 'copy-value';
+          hostnameCell.title = 'Click to copy';
+          hostnameCell.addEventListener('click', () => {
+            navigator.clipboard.writeText(hostnameValue);
+            showNotification(`Copied ${hostnameValue} to clipboard`, 'success', 2000);
+          });
           row.appendChild(hostnameCell);
           
           // Hostname.local:Port
           const hostnameLocalCell = document.createElement('td');
-          hostnameLocalCell.textContent = `${port.hostnameLocal}:${port.port}`;
+          const hostnameLocalValue = `${port.hostnameLocal}:${port.port}`;
+          hostnameLocalCell.textContent = hostnameLocalValue;
+          hostnameLocalCell.className = 'copy-value';
+          hostnameLocalCell.title = 'Click to copy';
+          hostnameLocalCell.addEventListener('click', () => {
+            navigator.clipboard.writeText(hostnameLocalValue);
+            showNotification(`Copied ${hostnameLocalValue} to clipboard`, 'success', 2000);
+          });
           row.appendChild(hostnameLocalCell);
+          
+          // Actions
+          const actionsCell = document.createElement('td');
+          const copyButton = document.createElement('button');
+          copyButton.className = 'mini-button copy-button';
+          copyButton.textContent = 'Copy';
+          copyButton.addEventListener('click', () => {
+            navigator.clipboard.writeText(hostnameLocalValue);
+            showNotification(`Copied ${hostnameLocalValue} to clipboard`, 'success', 2000);
+          });
+          actionsCell.appendChild(copyButton);
+          row.appendChild(actionsCell);
           
           tbody.appendChild(row);
         });
         
         table.appendChild(tbody);
         portsContainer.appendChild(table);
+        
+        showNotification(`Found ${ports.length} VNC connection${ports.length > 1 ? 's' : ''}`, 'success');
+      } else {
+        // No ports found
+        const noPortsMessage = document.createElement('div');
+        noPortsMessage.className = 'no-ports-message';
+        
+        // Create SVG warning icon
+        const warningIcon = createSVGIcon('warning');
+        warningIcon.classList.add('warning-icon');
+        
+        noPortsMessage.appendChild(warningIcon);
+        noPortsMessage.innerHTML += `
+          <p>No VNC ports were found on this system.</p>
+          <p>Make sure your VNC server is running and try again.</p>
+          <button id="rescan-button" class="action-button">Scan Again</button>
+        `;
+        portsContainer.appendChild(noPortsMessage);
+        
+        // Add event listener to rescan button
+        portsContainer.querySelector('#rescan-button').addEventListener('click', () => {
+          portsContainer.innerHTML = `
+            <div class="loading-spinner">
+              <div class="spinner"></div>
+              <p>Scanning for VNC ports...</p>
+            </div>
+          `;
+          
+          setTimeout(() => {
+            window.api.scanPortsExtended().then(newPorts => {
+              // Recursively call this function to update the UI
+              ports = newPorts;
+              window.api.scanPortsExtended();
+            }).catch(err => {
+              console.error('Error scanning ports:', err);
+              showNotification('Failed to scan ports', 'error');
+            });
+          }, 1000);
+        });
+        
+        showNotification('No VNC ports found', 'warning');
       }
-      
-      // Log ports info
-      const portsInfo = ports.map(port => `${port.path} -> IP: ${port.target}, Hostname: ${port.hostname}:${port.port}, FQDN: ${port.hostnameLocal}:${port.port}`).join('\n');
-      console.log(`VNC ports configured:\n${portsInfo}`);
     }
   }).catch(err => {
     console.error('Error scanning ports:', err);
+    showNotification('Failed to scan for VNC ports', 'error');
+    
+    const portsContainer = document.getElementById('vnc-ports-info');
+    if (portsContainer) {
+      // Create error message with SVG
+      portsContainer.innerHTML = '';
+      const errorMessage = document.createElement('div');
+      errorMessage.className = 'error-message';
+      
+      // Create SVG error icon
+      const errorIcon = createSVGIcon('error');
+      errorIcon.classList.add('error-icon');
+      
+      errorMessage.appendChild(errorIcon);
+      errorMessage.innerHTML += `
+        <p>Error scanning for VNC ports.</p>
+        <p class="error-details">${err.message || 'Unknown error'}</p>
+        <button id="retry-scan-button" class="action-button">Try Again</button>
+      `;
+      portsContainer.appendChild(errorMessage);
+      
+      portsContainer.querySelector('#retry-scan-button').addEventListener('click', () => {
+        window.location.reload();
+      });
+    }
   });
   
   // Set current year in copyright
