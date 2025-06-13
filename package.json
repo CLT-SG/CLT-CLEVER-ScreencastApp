@@ -1,15 +1,20 @@
 {
-  "name": "clevervncclient",
+  "name": "cleverscreencast",
   "version": "2.1.0",
-  "description": "CLEVER VNC Client for screen sharing and remote access",
+  "description": "CLEVER Screencast KVM for screen sharing and remote access",
   "main": "index.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "win32": "electron-builder --win --ia32",
+    "win64": "electron-builder --win --x64",
+    "ubuntu32": "electron-builder --linux --ia32",
+    "ubuntu64": "electron-builder --linux --x64"
   },
-  "author": "Closed-loop Technology Pte Ltd",
+  "homepage": "www.closed-loop.biz",
+  "author": {
+    "name": "Closed-Loop Technology Pte. Ltd",
+    "email": "sales@closed-loop.biz"
+  },
   "license": "ISC",
   "dependencies": {
     "async": "^3.2.5",
@@ -24,22 +29,29 @@
   },
   "devDependencies": {
     "electron": "^22.3.25",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.6.3"
   },
   "build": {
-    "appId": "com.closed-loop.clevervncclient",
-    "productName": "CLEVER VNC Client",
+    "appId": "screencast.client.app",
+    "productName": "CLEVER_Screencast",
+    "copyright": "Copyright © 2000-2025, Closed-loop. All rights ® reserved",
+    "directories": {
+      "output": "build/Release"
+    },
+    "compression": "maximum",
     "win": {
       "target": "nsis",
-      "icon": "src/assets/media/logo.ico"
+      "icon": "build/icons/clt.ico"
     },
     "mac": {
       "target": "dmg",
-      "icon": "src/assets/media/logo.icns"
+      "icon": "build/icons/clt.icns"
     },
     "linux": {
-      "target": "AppImage",
-      "icon": "src/assets/media/logo.png"
+      "target": "deb",
+      "icon": "build/icons/clt.png",
+      "category": "AudioVideo",
+      "desktop": "cltsvncapp"
     }
   }
 }

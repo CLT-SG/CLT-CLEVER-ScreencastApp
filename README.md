@@ -1,6 +1,6 @@
-# CLEVER VNC Client
+# CLEVER Screencast KVM
 
-CLEVER VNC Client is a desktop application built with Electron that provides VNC client functionality with both IP-based and hostname-based connections.
+CLEVER Screencast KVM is a desktop application built with Electron that provides Screencast KVM functionality with both IP-based and hostname-based connections.
 
 ## Features
 
@@ -31,7 +31,7 @@ The hostname options make it easier to connect within local networks, especially
 
 1. Download the latest release for your platform from the releases page
 2. Run the installer and follow the prompts
-3. Launch CLEVER VNC Client from the Start Menu or Applications folder
+3. Launch CLEVER Screencast KVM from the Start Menu or Applications folder
 
 ## Configuration
 
