@@ -90,15 +90,28 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Initialize connection status
-  window.api.getIpAddress().then(ip => {
+  // Initialize connection status and hostname information
+  window.api.getHostInfo().then(hostInfo => {
     const ipElement = document.getElementById('ip-address');
+    const hostnameElement = document.getElementById('hostname');
+    const hostnameLocalElement = document.getElementById('hostname-local');
+    
     if (ipElement) {
-      ipElement.textContent = ip;
-      console.log(`IP Address detected: ${ip}`);
+      ipElement.textContent = hostInfo.ip;
+      console.log(`IP Address detected: ${hostInfo.ip}`);
+    }
+    
+    if (hostnameElement) {
+      hostnameElement.textContent = hostInfo.hostname;
+      console.log(`Hostname detected: ${hostInfo.hostname}`);
+    }
+    
+    if (hostnameLocalElement) {
+      hostnameLocalElement.textContent = hostInfo.hostnameLocal;
+      console.log(`Hostname.local detected: ${hostInfo.hostnameLocal}`);
     }
   }).catch(err => {
-    console.error('Error getting IP address:', err);
+    console.error('Error getting host information:', err);
   });
 
   // Scan for VNC ports
@@ -108,8 +121,61 @@ document.addEventListener('DOMContentLoaded', () => {
       statusDot.classList.add('ready');
       
       // Display port information
-      const portsInfo = ports.map(port => `${port.path} -> ${port.target}`).join(', ');
-      console.log(`VNC ports configured: ${portsInfo}`);
+      const portsContainer = document.getElementById('vnc-ports-info');
+      if (portsContainer) {
+        // Clear previous content
+        portsContainer.innerHTML = '';
+        
+        // Create table header
+        const table = document.createElement('table');
+        table.className = 'vnc-ports-table';
+        
+        // Add header row
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        ['Screen', 'IP Address', 'Hostname', 'Hostname.local'].forEach(headerText => {
+          const th = document.createElement('th');
+          th.textContent = headerText;
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+        
+        // Add data rows
+        const tbody = document.createElement('tbody');
+        ports.forEach(port => {
+          const row = document.createElement('tr');
+          
+          // Screen number
+          const screenCell = document.createElement('td');
+          screenCell.textContent = port.path.replace('/screen', '');
+          row.appendChild(screenCell);
+          
+          // IP:Port
+          const ipCell = document.createElement('td');
+          ipCell.textContent = port.target;
+          row.appendChild(ipCell);
+          
+          // Hostname:Port
+          const hostnameCell = document.createElement('td');
+          hostnameCell.textContent = `${port.hostname}:${port.port}`;
+          row.appendChild(hostnameCell);
+          
+          // Hostname.local:Port
+          const hostnameLocalCell = document.createElement('td');
+          hostnameLocalCell.textContent = `${port.hostnameLocal}:${port.port}`;
+          row.appendChild(hostnameLocalCell);
+          
+          tbody.appendChild(row);
+        });
+        
+        table.appendChild(tbody);
+        portsContainer.appendChild(table);
+      }
+      
+      // Log ports info
+      const portsInfo = ports.map(port => `${port.path} -> IP: ${port.target}, Hostname: ${port.hostname}:${port.port}, FQDN: ${port.hostnameLocal}:${port.port}`).join('\n');
+      console.log(`VNC ports configured:\n${portsInfo}`);
     }
   }).catch(err => {
     console.error('Error scanning ports:', err);

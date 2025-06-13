@@ -31,9 +31,29 @@ var log = require('electron-log')
 log.transports.file.file = path.join(logdir, `${datelog}.log`)
 var pingstat
 var ipaddress
+var hostname = os.hostname()
+var hostnameLocal = `${hostname}.local`
+
+// Helper function to get host information - both IP and hostnames
+async function getHostInfo() {
+  try {
+    const networkInfo = await si.networkInterfaces('default')
+    return {
+      ip: networkInfo.ip4,
+      hostname: hostname,
+      hostnameLocal: hostnameLocal
+    }
+  } catch (err) {
+    log.error(`Error getting host info: ${err}`)
+    return {
+      ip: '127.0.0.1',
+      hostname: hostname,
+      hostnameLocal: hostnameLocal
+    }
+  }
+}
 
 // Websockify settings
-const hostname = os.hostname()
 const server = createServer({
   cert: fs.readFileSync(path.join(__dirname, '/cert/example.com+5.pem')),
   key: fs.readFileSync(path.join(__dirname, '/cert/example.com+5-key.pem'))
@@ -342,9 +362,13 @@ try {
               if (status) {
                 log.info(`VNC port ${port} is available`)
                 const screenPath = `/screen${port.substring(3, 4)}`
+                // Add both hostname formats for each port
                 availablePorts.push({
                   target: `${ipaddress}:${port}`,
-                  path: screenPath
+                  path: screenPath,
+                  hostname: hostname,
+                  hostnameLocal: hostnameLocal,
+                  port: port
                 })
               }
               next()
@@ -366,9 +390,9 @@ try {
         return availablePorts
       })
 
-      // Return IP address
-      ipcMain.handle('get-ipaddress', async () => {
-        return ipaddress
+      // Return host information
+      ipcMain.handle('get-host-info', async () => {
+        return await getHostInfo()
       })
 
       // Set tray context menu
@@ -437,51 +461,40 @@ function replaceConfig(search, replace) {
   }
 }
 
-function checkVncAndOpenWindow() {
+async function checkVncAndOpenWindow() {
   try {
-    isReachable(`127.0.0.1:${vncport}`, { timeout: 10000 })
-      .then(status => {
-        if (status) {
-          si.networkInterfaces('default')
-            .then(ipcon => {
-              ipaddress = ipcon.ip4
-              win.loadFile(path.join(__dirname, 'src', 'index.html'))
-              pingstat = false
-              log.info(`VNC server found on port ${vncport}, loading application`)
-            })
-            .catch(err => {
-              log.error(`Error getting network interfaces: ${err}`)
-              app.exit()
-            })
-        } else {
-          win.hide()
-          const options = {
-            type: 'info',
-            buttons: ['Ok'],
-            defaultId: 0,
-            title: 'ERROR - 2',
-            message: 'Cannot find VNC Server on this computer.',
-            detail: 'Make sure VNC Server is running. You can download at this website https://www.tightvnc.com/download.php\r\n' +
-              '\r\n\r\n' +
-              `Copyright © 2000-${moment().format('YYYY')} by Closed-loop Technology Pte Ltd. All rights reserved \r\n` +
-              ' www.closed-loop.biz'
+    const status = await isReachable(`127.0.0.1:${vncport}`, { timeout: 10000 })
+    if (status) {
+      const hostInfo = await getHostInfo()
+      ipaddress = hostInfo.ip
+      win.loadFile(path.join(__dirname, 'src', 'index.html'))
+      pingstat = false
+      log.info(`VNC server found on port ${vncport}, loading application`)
+      log.info(`Host information: IP=${hostInfo.ip}, Hostname=${hostInfo.hostname}, Hostname.local=${hostInfo.hostnameLocal}`)
+    } else {
+      win.hide()
+      const options = {
+        type: 'info',
+        buttons: ['Ok'],
+        defaultId: 0,
+        title: 'ERROR - 2',
+        message: 'Cannot find VNC Server on this computer.',
+        detail: 'Make sure VNC Server is running. You can download at this website https://www.tightvnc.com/download.php\r\n' +
+          '\r\n\r\n' +
+          `Copyright © 2000-${moment().format('YYYY')} by Closed-loop Technology Pte Ltd. All rights reserved \r\n` +
+          ' www.closed-loop.biz'
+      }
+      
+      dialog.showMessageBox(null, options)
+        .then(({response}) => {
+          if (response === 0) {
+            app.exit()
           }
-          
-          dialog.showMessageBox(null, options)
-            .then(({response}) => {
-              if (response === 0) {
-                app.exit()
-              }
-            })
-          
-          log.warn('VNC is not installed on this PC.')
-          pingstat = true
-        }
-      })
-      .catch(err => {
-        log.error(`Error checking VNC server: ${err}`)
-        app.exit()
-      })
+        })
+      
+      log.warn('VNC is not installed on this PC.')
+      pingstat = true
+    }
   } catch (err) {
     log.error(`Error in checkVncAndOpenWindow: ${err}`)
     app.exit()

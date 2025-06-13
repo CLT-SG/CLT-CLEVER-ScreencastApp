@@ -34,8 +34,20 @@
   <div class="top top-2">
     Screencast & Desktop Sharing
   </div>
-  <div class="top top-3">
-    IP Address: <span id="ip-address">Checking...</span>
+  
+  <div class="host-info-container">
+    <div class="host-info-item">
+      <span class="host-info-label">IP Address:</span>
+      <span id="ip-address" class="host-info-value">Checking...</span>
+    </div>
+    <div class="host-info-item">
+      <span class="host-info-label">Hostname:</span>
+      <span id="hostname" class="host-info-value">Checking...</span>
+    </div>
+    <div class="host-info-item">
+      <span class="host-info-label">FQDN:</span>
+      <span id="hostname-local" class="host-info-value">Checking...</span>
+    </div>
   </div>
 
   <div class="container-button">
@@ -46,6 +58,13 @@
   <div class="connection-status">
     <span>Connection Status:</span>
     <span class="status-dot offline"></span>
+  </div>
+  
+  <div class="vnc-ports-container">
+    <h3>Available VNC Connections:</h3>
+    <div id="vnc-ports-info">
+      <p>Scanning for VNC ports...</p>
+    </div>
   </div>
 
   <div class="container-config">
