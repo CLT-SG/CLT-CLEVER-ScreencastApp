@@ -227,18 +227,18 @@ try {
     })
 
     // Start HTTP server
-    server.listen(8840, () => log.info(`Server listening on ${hostname}:8840`))
+    server.listen(config.server?.port || 8840, () => log.info(`Server listening on ${hostname}:${config.server?.port || 8840}`))
 
     // App startup config
     app.whenReady().then(() => {
       // Create main window
       win = new BrowserWindow({
-        //width: 350,
-        //height: 460,
-        width: 1200,
-        height: 960,
+        width: config.window?.width || 1200,
+        height: config.window?.height || 960,
+        minWidth: config.window?.minWidth || 800,
+        minHeight: config.window?.minHeight || 600,
         icon: iconPath,
-        resizable: false,
+        resizable: config.window?.resizable !== undefined ? config.window.resizable : false,
         frame: false,
         webPreferences: {
           preload: path.join(__dirname, 'preload.js'),
@@ -247,6 +247,20 @@ try {
           sandbox: false,
           webSecurity: true
         }
+      })
+      
+      // Add CSS to hide scrollbars at application level
+      win.webContents.on('did-finish-load', () => {
+        win.webContents.insertCSS(`
+          ::-webkit-scrollbar {
+            display: none !important;
+          }
+          * {
+            -ms-overflow-style: none !important;
+            scrollbar-width: none !important;
+          }
+        `)
+        log.info('Applied CSS to hide scrollbars')
       })
 
       // Auto startup settings
@@ -460,7 +474,7 @@ try {
       // Scan and set up VNC ports
       ipcMain.handle('port-extended', async () => {
         log.info('Scanning VNC ports')
-        const ports = ['5900', '5901', '5902', '5903', '5904', '5905']
+        const ports = config.server?.scanPorts || ['5900', '5901', '5902', '5903', '5904', '5905']
         const availablePorts = []
         
         try {
@@ -549,10 +563,12 @@ try {
         win.focus() // Ensure window is focused when shown
       })
 
-      // Auto hide after 5 seconds
-      setTimeout(() => {
-        win.hide()
-      }, 5000)
+      // Auto hide after configured time (or 5 seconds by default)
+      if (config.appearance?.showSplash !== false) {
+        setTimeout(() => {
+          win.hide()
+        }, config.appearance?.splashDuration || 5000)
+      }
 
       // Register dev tools shortcut
       globalShortcut.register('CommandOrControl+D', () => {
@@ -593,7 +609,8 @@ function replaceConfig(search, replace) {
 
 async function checkVncAndOpenWindow() {
   try {
-    const status = await isReachable(`127.0.0.1:${vncport}`, { timeout: 10000 })
+    const timeout = config.connection?.timeout || 10000
+    const status = await isReachable(`127.0.0.1:${vncport}`, { timeout })
     if (status) {
       const hostInfo = await getHostInfo()
       ipaddress = hostInfo.ip

@@ -277,14 +277,28 @@ document.addEventListener('DOMContentLoaded', () => {
           statusDot.classList.add('ready');
         }
         
+        // Check screen size for responsive layout
+        const isSmallScreen = window.innerWidth <= 460;
+        const isMediumScreen = window.innerWidth <= 650 && window.innerWidth > 460;
+        
         // Create table header
         const table = document.createElement('table');
         table.className = 'vnc-ports-table';
         
-        // Add header row
+        // Add header row with different columns based on screen size
         const thead = document.createElement('thead');
         const headerRow = document.createElement('tr');
-        ['Screen', 'IP Address', 'Hostname', 'Hostname.local', 'Actions'].forEach(headerText => {
+        
+        let headerColumns;
+        if (isSmallScreen) {
+          headerColumns = ['#', 'Host:Port', 'Actions']; 
+        } else if (isMediumScreen) {
+          headerColumns = ['#', 'IP Address', 'Hostname', 'Actions'];
+        } else {
+          headerColumns = ['Screen', 'IP Address', 'Hostname', 'FQDN', 'Actions'];
+        }
+        
+        headerColumns.forEach(headerText => {
           const th = document.createElement('th');
           th.textContent = headerText;
           headerRow.appendChild(th);
@@ -302,40 +316,57 @@ document.addEventListener('DOMContentLoaded', () => {
           screenCell.textContent = port.path.replace('/screen', '');
           row.appendChild(screenCell);
           
-          // IP:Port
-          const ipCell = document.createElement('td');
-          ipCell.textContent = port.target;
-          ipCell.className = 'copy-value';
-          ipCell.title = 'Click to copy';
-          ipCell.addEventListener('click', () => {
-            navigator.clipboard.writeText(port.target);
-            showNotification(`Copied ${port.target} to clipboard`, 'success', 2000);
-          });
-          row.appendChild(ipCell);
-          
-          // Hostname:Port
-          const hostnameCell = document.createElement('td');
-          const hostnameValue = `${port.hostname}:${port.port}`;
-          hostnameCell.textContent = hostnameValue;
-          hostnameCell.className = 'copy-value';
-          hostnameCell.title = 'Click to copy';
-          hostnameCell.addEventListener('click', () => {
-            navigator.clipboard.writeText(hostnameValue);
-            showNotification(`Copied ${hostnameValue} to clipboard`, 'success', 2000);
-          });
-          row.appendChild(hostnameCell);
-          
-          // Hostname.local:Port
-          const hostnameLocalCell = document.createElement('td');
-          const hostnameLocalValue = `${port.hostnameLocal}:${port.port}`;
-          hostnameLocalCell.textContent = hostnameLocalValue;
-          hostnameLocalCell.className = 'copy-value';
-          hostnameLocalCell.title = 'Click to copy';
-          hostnameLocalCell.addEventListener('click', () => {
-            navigator.clipboard.writeText(hostnameLocalValue);
-            showNotification(`Copied ${hostnameLocalValue} to clipboard`, 'success', 2000);
-          });
-          row.appendChild(hostnameLocalCell);
+          if (isSmallScreen) {
+            // Combined info for small screens
+            const combinedCell = document.createElement('td');
+            const hostnameValue = `${port.hostnameLocal}:${port.port}`;
+            combinedCell.textContent = hostnameValue;
+            combinedCell.className = 'copy-value';
+            combinedCell.title = 'Click to copy';
+            combinedCell.addEventListener('click', () => {
+              navigator.clipboard.writeText(hostnameValue);
+              showNotification(`Copied ${hostnameValue} to clipboard`, 'success', 2000);
+            });
+            row.appendChild(combinedCell);
+          } else {
+            // IP:Port
+            const ipCell = document.createElement('td');
+            ipCell.textContent = port.target;
+            ipCell.className = 'copy-value';
+            ipCell.title = 'Click to copy';
+            ipCell.addEventListener('click', () => {
+              navigator.clipboard.writeText(port.target);
+              showNotification(`Copied ${port.target} to clipboard`, 'success', 2000);
+            });
+            row.appendChild(ipCell);
+            
+            // Hostname:Port
+            const hostnameCell = document.createElement('td');
+            const hostnameValue = `${port.hostname}:${port.port}`;
+            hostnameCell.textContent = hostnameValue;
+            hostnameCell.className = 'copy-value';
+            hostnameCell.title = 'Click to copy';
+            hostnameCell.addEventListener('click', () => {
+              navigator.clipboard.writeText(hostnameValue);
+              showNotification(`Copied ${hostnameValue} to clipboard`, 'success', 2000);
+            });
+            row.appendChild(hostnameCell);
+            
+            // Only add FQDN column on larger screens
+            if (!isMediumScreen) {
+              // Hostname.local:Port
+              const hostnameLocalCell = document.createElement('td');
+              const hostnameLocalValue = `${port.hostnameLocal}:${port.port}`;
+              hostnameLocalCell.textContent = hostnameLocalValue;
+              hostnameLocalCell.className = 'copy-value';
+              hostnameLocalCell.title = 'Click to copy';
+              hostnameLocalCell.addEventListener('click', () => {
+                navigator.clipboard.writeText(hostnameLocalValue);
+                showNotification(`Copied ${hostnameLocalValue} to clipboard`, 'success', 2000);
+              });
+              row.appendChild(hostnameLocalCell);
+            }
+          }
           
           // Actions
           const actionsCell = document.createElement('td');
@@ -343,8 +374,9 @@ document.addEventListener('DOMContentLoaded', () => {
           copyButton.className = 'mini-button copy-button';
           copyButton.textContent = 'Copy';
           copyButton.addEventListener('click', () => {
-            navigator.clipboard.writeText(hostnameLocalValue);
-            showNotification(`Copied ${hostnameLocalValue} to clipboard`, 'success', 2000);
+            const valueToShare = port.hostnameLocal + ':' + port.port;
+            navigator.clipboard.writeText(valueToShare);
+            showNotification(`Copied ${valueToShare} to clipboard`, 'success', 2000);
           });
           actionsCell.appendChild(copyButton);
           row.appendChild(actionsCell);
