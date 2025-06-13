@@ -621,6 +621,85 @@ body {
   font-size: 0.8em;
 }
 
+/* Add styles for the new Connection Types section */
+
+.connection-types-card {
+  margin-bottom: 20px;
+}
+
+.connection-type-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.connection-type-item:last-child {
+  border-bottom: none;
+}
+
+.connection-type-label {
+  min-width: 80px;
+  font-weight: bold;
+  color: #b0b0b0;
+}
+
+.connection-types-card .card-content {
+  padding: 10px 15px;
+}
+
+/* Add a subtle highlight effect on hover for connection type values */
+.connection-type-item .copy-value:hover {
+  background-color: rgba(100, 149, 237, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Add styling for connection-specific elements */
+.connection-type-info {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.connection-type-info p {
+  margin: 5px 0;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Make copy buttons in connection types slightly smaller */
+.connection-type-item .copy-button {
+  font-size: 0.85em;
+  padding: 2px 8px;
+}
+
+/* Show loading animation in connection types section */
+.connection-types-card .loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+/* Add responsive styles for the connection types section */
+@media screen and (max-width: 460px) {
+  .connection-type-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .connection-type-label {
+    margin-bottom: 5px;
+  }
+  
+  .connection-type-item .host-info-value-container {
+    width: 100%;
+  }
+}
+
 /* Improved responsive styles */
 @media (max-width: 650px) {
   /* Base adjustments for small screens */
@@ -781,5 +860,51 @@ body {
     .vnc-ports-table td:nth-child(4) {
       display: none; /* Hide the fourth column on very small screens */
     }
+  }
+}
+
+/* Add styles for small screen VNC ports table */
+
+@media screen and (max-width: 460px) {
+  .vnc-ports-table {
+    font-size: 0.85rem;
+  }
+  
+  .vnc-ports-table th, 
+  .vnc-ports-table td {
+    padding: 6px 4px;
+    word-break: break-word;
+  }
+  
+  .vnc-ports-table th:first-child,
+  .vnc-ports-table td:first-child {
+    width: 10%;
+    min-width: 30px;
+    text-align: center;
+  }
+  
+  .vnc-ports-table th:nth-child(2),
+  .vnc-ports-table td:nth-child(2) {
+    width: 45%;
+  }
+  
+  .vnc-ports-table th:nth-child(3),
+  .vnc-ports-table td:nth-child(3) {
+    width: 45%;
+  }
+  
+  /* Make text copy indicators more visible */
+  .copy-value {
+    position: relative;
+  }
+  
+  .copy-value:after {
+    content: "tap to copy";
+    position: absolute;
+    top: -12px;
+    right: 0;
+    font-size: 8px;
+    opacity: 0.6;
+    color: #aaddff;
   }
 }
