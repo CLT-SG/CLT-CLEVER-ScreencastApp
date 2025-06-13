@@ -22,8 +22,8 @@ const logdir = path.normalize(homedir + '/clevervnc-log')
 const iconPath = path.join(__dirname, '/src/assets/media/logo.png')
 const publishPath = path.join(__dirname, '/src/assets/media/publish.png')
 const now = new Date()
-const date = require('date-and-time')
-const datelog = date.format(now, 'YYYY-MM-DD')
+const moment = require('moment') // Replace date-and-time with moment
+const datelog = moment().format('YYYY-MM-DD')
 const config = require('./config')
 
 // Configure logging
@@ -59,7 +59,7 @@ const screencastAutoLaunch = new AutoLaunch({
   path: app.getPath('exe'),
 })
 
-// Menu template
+// Menu template with updated structure for Electron v22
 const template = [
   {
     label: 'Menu',
@@ -71,36 +71,30 @@ const template = [
             label: "30 min",
             type: "radio",
             checked: config.autorestart == 1800000,
-            click: (menuItem, browserWindow) => {
-              menuItem.checked = true
+            click: () => {
               replaceConfig('autorestart', 'exports.autorestart = 1800000')
               setupAutoReload(1800000)
-              const menu = Menu.buildFromTemplate(template)
-              Menu.setApplicationMenu(menu)
+              updateMenu()
             }
           },
           {
             label: "1 hour",
             type: "radio",
             checked: config.autorestart == 3600000,
-            click: (menuItem, browserWindow) => {
-              menuItem.checked = true
+            click: () => {
               replaceConfig('autorestart', 'exports.autorestart = 3600000')
               setupAutoReload(3600000)
-              const menu = Menu.buildFromTemplate(template)
-              Menu.setApplicationMenu(menu)
+              updateMenu()
             }
           },
           {
             label: "3 hour",
             type: "radio",
             checked: config.autorestart == 10800000,
-            click: (menuItem, browserWindow) => {
-              menuItem.checked = true
+            click: () => {
               replaceConfig('autorestart', 'exports.autorestart = 10800000')
               setupAutoReload(10800000)
-              const menu = Menu.buildFromTemplate(template)
-              Menu.setApplicationMenu(menu)
+              updateMenu()
             }
           }
         ]
@@ -138,8 +132,28 @@ const template = [
         }
       })
     ]
+  },
+  {
+    label: 'View',
+    submenu: [
+      { role: 'reload' },
+      { role: 'forceReload' },
+      { type: 'separator' },
+      { role: 'toggleDevTools' },
+      { type: 'separator' },
+      { role: 'resetZoom' },
+      { role: 'zoomIn' },
+      { role: 'zoomOut' },
+      { type: 'separator' },
+      { role: 'togglefullscreen' }
+    ]
   }
 ]
+
+function updateMenu() {
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+}
 
 // Single instance lock
 const gotTheLock = app.requestSingleInstanceLock()
@@ -198,8 +212,10 @@ try {
     app.whenReady().then(() => {
       // Create main window
       win = new BrowserWindow({
-        width: 350,
-        height: 460,
+        //width: 350,
+        //height: 460,
+        width: 1200,
+        height: 960,
         icon: iconPath,
         resizable: false,
         frame: false,
@@ -219,27 +235,49 @@ try {
         })
       }
 
-      // Set menu
-      const menu = Menu.buildFromTemplate(template)
-      Menu.setApplicationMenu(menu)
+      // Set menu - fixed for Electron v22
+      updateMenu()
 
       // Create tray icon
       appIcon = new Tray(iconPath)
-      const contextMenu = Menu.buildFromTemplate([{
-        label: 'Show App',
-        click: function () {
-          win.show()
+      const contextMenu = Menu.buildFromTemplate([
+        {
+          label: 'Show App',
+          click: function () {
+            win.show()
+          }
+        },
+        {
+          label: 'Quit',
+          click: function () {
+            app.isQuiting = true
+            appIcon.destroy()
+            app.quit()
+          }
         }
-      },
-      {
-        label: 'Quit',
-        click: function () {
-          app.isQuiting = true
-          appIcon.destroy()
-          app.quit()
-        }
-      }
       ])
+
+      // New IPC handlers for window controls
+      ipcMain.handle('minimize-window', () => {
+        win.minimize()
+      })
+      
+      ipcMain.handle('maximize-window', () => {
+        if (win.isMaximized()) {
+          win.unmaximize()
+        } else {
+          win.maximize()
+        }
+      })
+      
+      ipcMain.handle('close-window', () => {
+        win.hide()
+      })
+      
+      ipcMain.handle('open-about', async () => {
+        const { shell } = require('electron')
+        await shell.openExternal('https://www.closed-loop.biz/contact.html')
+      })
 
       // IPC Handlers
       // Get app version
@@ -343,8 +381,13 @@ try {
       setupAutoReload(config.autorestart)
 
       // Window events
-      win.on('close', () => {
-        win = null
+      win.on('close', (event) => {
+        if (!app.isQuiting) {
+          event.preventDefault()
+          win.hide()
+          return false
+        }
+        return true
       })
       
       win.on('minimize', (event) => {
@@ -365,6 +408,11 @@ try {
       // Clear cache on startup
       win.webContents.session.clearCache().then(() => {
         log.info("Cache cleared on startup")
+      })
+
+      // Listen for DOM ready from renderer
+      ipcMain.on('dom-ready', () => {
+        log.info('DOM ready event received from renderer process')
       })
 
       // Check VNC status and open window
@@ -389,40 +437,53 @@ function replaceConfig(search, replace) {
   }
 }
 
-async function checkVncAndOpenWindow() {
+function checkVncAndOpenWindow() {
   try {
-    const status = await isReachable(`127.0.0.1:${vncport}`, { timeout: 10000 })
-    
-    if (status) {
-      const ipcon = await si.networkInterfaces('default')
-      ipaddress = ipcon.ip4
-      win.loadFile(path.join(__dirname, 'src', 'index.html'))
-      pingstat = false
-      log.info(`VNC server found on port ${vncport}, loading application`)
-    } else {
-      win.hide()
-      const options = {
-        type: 'info',
-        buttons: ['Ok'],
-        defaultId: 0,
-        title: 'ERROR - 2',
-        message: 'Cannot find VNC Server on this computer.',
-        detail: 'Make sure VNC Server is running. You can download at this website https://www.tightvnc.com/download.php\r\n' +
-          '\r\n\r\n' +
-          `Copyright © 2000-${date.format(now, 'YYYY')} by Closed-loop Technology Pte Ltd. All rights reserved \r\n` +
-          ' www.closed-loop.biz'
-      }
-      
-      const { response } = await dialog.showMessageBox(null, options)
-      if (response === 0) {
+    isReachable(`127.0.0.1:${vncport}`, { timeout: 10000 })
+      .then(status => {
+        if (status) {
+          si.networkInterfaces('default')
+            .then(ipcon => {
+              ipaddress = ipcon.ip4
+              win.loadFile(path.join(__dirname, 'src', 'index.html'))
+              pingstat = false
+              log.info(`VNC server found on port ${vncport}, loading application`)
+            })
+            .catch(err => {
+              log.error(`Error getting network interfaces: ${err}`)
+              app.exit()
+            })
+        } else {
+          win.hide()
+          const options = {
+            type: 'info',
+            buttons: ['Ok'],
+            defaultId: 0,
+            title: 'ERROR - 2',
+            message: 'Cannot find VNC Server on this computer.',
+            detail: 'Make sure VNC Server is running. You can download at this website https://www.tightvnc.com/download.php\r\n' +
+              '\r\n\r\n' +
+              `Copyright © 2000-${moment().format('YYYY')} by Closed-loop Technology Pte Ltd. All rights reserved \r\n` +
+              ' www.closed-loop.biz'
+          }
+          
+          dialog.showMessageBox(null, options)
+            .then(({response}) => {
+              if (response === 0) {
+                app.exit()
+              }
+            })
+          
+          log.warn('VNC is not installed on this PC.')
+          pingstat = true
+        }
+      })
+      .catch(err => {
+        log.error(`Error checking VNC server: ${err}`)
         app.exit()
-      }
-      
-      log.warn('VNC is not installed on this PC.')
-      pingstat = true
-    }
+      })
   } catch (err) {
-    log.error(`Error checking VNC server: ${err}`)
+    log.error(`Error in checkVncAndOpenWindow: ${err}`)
     app.exit()
   }
 }

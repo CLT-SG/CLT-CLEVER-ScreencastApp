@@ -1,8 +1,7 @@
 // Import required modules
 const { contextBridge, ipcRenderer } = require('electron')
-const fs = require('fs')
+const moment = require('moment') // Use moment instead of date-and-time
 const path = require('path')
-const moment = require('moment')
 const os = require('os')
 
 // Load config safely
@@ -29,21 +28,12 @@ contextBridge.exposeInMainWorld('api', {
     homedir: () => os.homedir()
   },
   
-  // File system limited access
-  fs: {
-    readFile: (filePath, options) => {
-      // Only allow reading from specific directories
-      if (filePath.startsWith(path.join(__dirname, 'src'))) {
-        return fs.readFileSync(filePath, options)
-      }
-      return null
-    }
-  },
-  
   // Date and time utilities
   time: {
     now: () => new Date(),
-    format: (date, format) => moment(date).format(format)
+    format: (dateObj, format) => moment(dateObj).format(format),
+    getCurrentDate: () => moment().format('YYYY-MM-DD'),
+    parseDate: (dateString, format) => moment(dateString, format)
   },
   
   // App configuration
@@ -56,8 +46,23 @@ contextBridge.exposeInMainWorld('api', {
   },
   
   // Application version (will be set by main process)
-  getAppVersion: () => ipcRenderer.invoke('get-app-version')
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  reloadPage: () => ipcRenderer.invoke('reload'),
+  restartApp: () => ipcRenderer.invoke('restartapp'),
+  saveConfig: (search, replace, checked) => ipcRenderer.invoke('save-config', search, replace, checked),
+  setTrayIcon: (trayimg) => ipcRenderer.invoke('tray-icon', trayimg),
+  scanPortsExtended: () => ipcRenderer.invoke('port-extended'),
+  getIpAddress: () => ipcRenderer.invoke('get-ipaddress'),
+  minimize: () => ipcRenderer.invoke('minimize-window'),
+  maximize: () => ipcRenderer.invoke('maximize-window'),
+  close: () => ipcRenderer.invoke('close-window'),
+  openAbout: () => ipcRenderer.invoke('open-about')
 })
 
 // Log preload execution
 console.log('Preload script executed')
+
+// DOM-ready listener to notify main process
+window.addEventListener('DOMContentLoaded', () => {
+  ipcRenderer.send('dom-ready')
+})

@@ -2,143 +2,80 @@
 <html lang="en">
 
 <head>
-  <title>CLEVER - ScreenCast & VNC</title>
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src *">
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLEVER VNC Client</title>
   <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/fontawesome.min.css">
 </head>
 
 <body>
-  <div class="top top-1">CLEVER</div>
-  <div class="top top-2">ScreenCast</div>
-  <div class="top top-3"></div>
-  <div class="container-button">
-    <input type="checkbox" id="auto" class="setup-chkbx" checked disabled>
-    <label for="auto" style="font-size:115%;display:inline;">Auto connect</label><br>
-    <input type="checkbox" id="audio" class="setup-chkbx">
-    <label for="audio" style="font-size:115%;display:inline;">Audio & Mic</label><br>
-    <input type="checkbox" id="startup" class="setup-chkbx">
-    <label for="startup" style="font-size:115%;display:inline;">Start ScreenCast when start-up</label><br>
+  <div class="window-controls">
+    <div class="window-title-bar">
+      <div class="window-title">CLEVER VNC Client <span id="app-version"></span></div>
+      <div class="window-controls-container">
+        <button id="minimize-button" class="window-control-button">
+          <span class="window-control-icon">&#8211;</span>
+        </button>
+        <button id="maximize-button" class="window-control-button">
+          <span class="window-control-icon">&#9744;</span>
+        </button>
+        <button id="close-button" class="window-control-button">
+          <span class="window-control-icon">&#10005;</span>
+        </button>
+      </div>
+    </div>
   </div>
-  <div class="container-button">
-    <button id="restart-screen" class="setup smaller">Restart</button>
-    <button id="audio-settings" class="setup smaller">Audio Settings</button>
+
+  <div class="top top-1">
+    CLEVER VNC Client
   </div>
+  <div class="top top-2">
+    Screencast & Desktop Sharing
+  </div>
+  <div class="top top-3">
+    IP Address: <span id="ip-address">Checking...</span>
+  </div>
+
+  <div class="container-button">
+    <button id="start-button">Start</button>
+    <button id="stop-button">Stop</button>
+  </div>
+
   <div class="connection-status">
-    <div id="status-indicator" class="status-dot offline"></div>
-    <span id="status-text">Not connected</span>
+    <span>Connection Status:</span>
+    <span class="status-dot offline"></span>
   </div>
+
+  <div class="container-config">
+    <div class="setup">
+      <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="autostartup" id="autostartup"
+        checked>
+      <label for="autostartup">Auto startup when PC starts</label>
+    </div>
+    <div class="setup">
+      <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="audio" id="audio" checked>
+      <label for="audio">Enable Audio</label>
+    </div>
+  </div>
+
+  <button id="restart-button" class="reset-btn">Restart</button>
+
   <div class="copyright">
-    <img src="assets/images/logo.png" class="clt-logo"></img>
-    <div class="copyright-desc">Copyright © 2000-Present, Closed-loop. All right reserved | Version:</div>
+    <div class="clt-logo">
+      <img src="assets/media/logo.png" alt="Company Logo" style="height: 50px;">
+    </div>
+    <div class="copyright-desc">
+      © 2000-<span id="current-year"></span> by Closed-loop Technology Pte Ltd.<br>
+      All rights reserved.
+    </div>
   </div>
 
+  <script src="renderer.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Get hostname from the OS API
-      const computerName = window.api.os.hostname();
-      const cleverlist = window.api.config.cleverserver || ['192.168.1.208', '192.168.1.100'];
-      let ipaddress;
-
-      // Update copyright and version
-      const updateVersionInfo = async () => {
-        const appVersion = await window.api.getAppVersion();
-        const currentYear = new Date().getFullYear();
-        document.querySelector('.copyright-desc').textContent = 
-          `Copyright © 2000-${currentYear}, Closed-loop. All right reserved | Version: ${appVersion} | www.closed-loop.biz`;
-      };
-      updateVersionInfo();
-
-      // Get local IP address
-      window.api.send('get-ipaddress', 'ippp').then((result) => {
-        ipaddress = result;
-        updateStatus('Ready - ' + ipaddress);
-        document.querySelector('.top-3').textContent = `Hostname: ${computerName}`;
-
-        // Auto connect if checked
-        if (document.getElementById('auto').checked) {
-          sendInfo(cleverlist);
-          updateTrayIcon('publish');
-
-          // Scan for VNC ports
-          setTimeout(() => {
-            window.api.send('port-extended').then((result) => {
-              console.log('Port scanning complete');
-              if (result && result.length > 0) {
-                updateStatus('Connected - VNC ports: ' + result.map(p => p.target.split(':')[1]).join(', '));
-              } else {
-                updateStatus('No VNC ports found');
-              }
-            });
-          }, 3000);
-        }
-      });
-
-      // Event listeners
-      document.getElementById('restart-screen').addEventListener('click', function() {
-        updateStatus('Restarting...');
-        window.api.send('reload');
-      });
-
-      document.getElementById('audio-settings').addEventListener('click', function() {
-        window.open('/master', '_blank');
-      });
-
-      // Audio checkbox
-      const audioCheckbox = document.getElementById('audio');
-      audioCheckbox.checked = window.api.config.audio;
-      audioCheckbox.addEventListener('click', function() {
-        const configValue = this.checked ? 'exports.audio = true' : 'exports.audio = false';
-        window.api.send('save-config', 'audio', configValue, this.checked);
-        updateStatus('Updating audio settings...');
-        setTimeout(function() {
-          window.api.send('restartapp');
-        }, 1000);
-      });
-
-      // Startup checkbox
-      const startupCheckbox = document.getElementById('startup');
-      startupCheckbox.checked = window.api.config.autostartup;
-      startupCheckbox.addEventListener('click', function() {
-        const configValue = this.checked ? 'exports.autostartup = true' : 'exports.autostartup = false';
-        window.api.send('save-config', 'autostartup', configValue, this.checked);
-        updateStatus(this.checked ? 'Enabled startup' : 'Disabled startup');
-      });
-    });
-
-    // Send information to CLEVER controller
-    function sendInfo(hostadd) {
-      console.log('Attempting to connect to CLEVER controllers:', hostadd);
-      updateStatus('Connecting to CLEVER controllers...');
-    }
-
-    // Update the tray icon
-    function updateTrayIcon(icon) {
-      window.api.send('tray-icon', icon);
-      updateStatus(icon === 'publish' ? 'Publishing' : 'Stopped');
-    }
-
-    // Update the status indicator
-    function updateStatus(message) {
-      const statusDot = document.getElementById('status-indicator');
-      const statusText = document.getElementById('status-text');
-      
-      if (!statusDot || !statusText) return;
-      
-      statusText.textContent = message;
-      
-      if (message.includes('Connected') || message.includes('Publishing')) {
-        statusDot.className = 'status-dot online';
-      } else if (message.includes('Ready')) {
-        statusDot.className = 'status-dot ready';
-      } else {
-        statusDot.className = 'status-dot offline';
-      }
-      
-      console.log('Status:', message);
-    }
+    // Set current year in copyright
+    document.getElementById('current-year').textContent = new Date().getFullYear();
   </script>
 </body>
 
