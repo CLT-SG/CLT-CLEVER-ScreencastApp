@@ -5,7 +5,30 @@ All notable changes to the CLEVER VNC Client will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.9] - 25-12-2024
+## [2.1.0] - 2023-11-14
+
+### Added
+- Support for Electron 22.x
+- Enhanced WebRTC audio streaming with better compatibility
+- Improved security with contextIsolation enabled
+- Modern IPC communication between main and renderer processes
+- Better error handling throughout the application
+
+### Changed
+- Updated dependencies to latest compatible versions
+- Modernized code with current JavaScript standards
+- Improved security with proper preload scripts and IPC handling
+- Enhanced WebRTC implementation with latest standards
+- Improved audio visualization with smoother rendering
+
+### Fixed
+- Memory leak in WebSocket connections
+- Connection stability issues
+- Potential security vulnerabilities in dependencies
+- Audio synchronization problems
+- Error handling during connection failures
+
+## [2.0.9] - 25-12-2022
 
 ### Added
 - Audio streaming functionality through WebRTC
@@ -44,7 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - High CPU usage during idle connections
 - Tray icon not updating properly on status change
 
-## [2.0.7] - 19-04-18
+## [2.0.7] - 19-04-2024
 
 ### Added
 - Auto-startup configuration option
@@ -61,7 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Screen sharing artifacts in high-resolution displays
 - Occasional application freeze when changing network interfaces
 
-## [2.0.6] - 2023-05-10
+## [2.0.6] - 10-05-2023
 
 ### Added
 - Support for multiple CLEVER server connections
@@ -78,7 +101,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Connection handling on network changes
 - Memory leaks in long-running sessions
 
-## [2.0.5] - 2022-03-15
+## [2.0.5] - 15-03-2022
 
 ### Added
 - Hostname-based connection infrastructure
@@ -95,7 +118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with Windows sleep/resume cycle
 - Problems with multi-user environments
 
-## [1.0.8] - 2021-01-20
+## [1.0.8] - 20-01-2022
 
 ### Added
 - Comprehensive logging system

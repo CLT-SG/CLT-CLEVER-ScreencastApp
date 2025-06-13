@@ -3,8 +3,10 @@
   src: url('../fonts/PTSerif-Regular.ttf');
 }
 
-@font-face { font-family: Roboto-Medium; 
-  src: url('../fonts/Roboto-Medium.ttf'); } 
+@font-face { 
+  font-family: Roboto-Medium; 
+  src: url('../fonts/Roboto-Medium.ttf'); 
+} 
 
 html,
 body {
@@ -43,11 +45,6 @@ a:active {
   color: #000;
 }
 
-:-moz-any-link:focus {
-  border: 0;
-  color: #000;
-}
-
 ::selection {
   background: #ccc;
 }
@@ -70,6 +67,7 @@ input[type=button] {
   padding: 5px 5px;
   text-align: center;
   font-size: 1.5em;
+  transition: background-color 0.3s ease;
 }
 
 button:hover,
@@ -88,17 +86,13 @@ input[type=button][disabled] {
   border: 1px solid rgb(187, 181, 181);
   color: gray;
   text-shadow: none;
+  cursor: not-allowed;
 }
 
 strong {
   color: rgb(204, 14, 14);
   font-family: inherit;
   font-weight: normal;
-}
-
-.experiment {
-  margin: 0;
-  padding: 0;
 }
 
 .top {
@@ -128,37 +122,18 @@ strong {
   body {
     font-size: 1.1em;
   }
-
-  .experiment {
-    margin: 0;
-  }
 }
 
-/* For mobile future change this width */
 @media all and (max-width: 500px) {
   body {
     font-size: .9em;
   }
-
-  .experiment {
-    margin: 0;
-  }
 }
 
-/* For mobile future change this width */
 @media all and (max-width: 300px) {
   body {
     font-size: .8em;
   }
-
-  .experiment {
-    margin: 0;
-  }
-}
-
-.hide-after-join {
-  margin: 0;
-  padding: 0;
 }
 
 .setup {
@@ -194,10 +169,41 @@ strong {
 }
 
 .container-button {
-  margin-top: 20%;
+  margin-top: 5%;
   display: block;
   text-align: center;
   width: 100%;
+}
+
+.connection-status {
+  margin-top: 5%;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.offline {
+  background-color: #ff3333;
+  box-shadow: 0 0 5px #ff3333;
+}
+
+.status-dot.online {
+  background-color: #33ff33;
+  box-shadow: 0 0 5px #33ff33;
+}
+
+.status-dot.ready {
+  background-color: #ffff33;
+  box-shadow: 0 0 5px #ffff33;
 }
 
 .host-input {
@@ -236,7 +242,7 @@ body .window-controls-container .window-icon-bg .window-icon {
 .clt-logo {
   background-color: white;
   width: 39%;
-  height:50px;
+  height: 50px;
 }
 
 .copyright-desc {
@@ -245,4 +251,25 @@ body .window-controls-container .window-icon-bg .window-icon {
   text-align: center;
   width: 59%;
   font-size: 0.79em;
+}
+
+/* Animation for status indicator */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.status-dot.online,
+.status-dot.ready {
+  animation: pulse 2s infinite;
 }

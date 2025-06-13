@@ -4,26 +4,326 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Client Audio Streaming</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #770055;
+            color: white;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        button {
+            background-color: #ac1e84;
+            color: white;
+            border: 2px solid #f5dcdc;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            display: block;
+            margin: 20px auto;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #de78e9;
+        }
+
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        .audio-controls {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        audio {
+            width: 100%;
+            margin: 10px 0;
+            border-radius: 5px;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .status {
+            text-align: center;
+            margin: 10px 0;
+            font-size: 14px;
+            height: 20px;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 15px 0;
+        }
+
+        .volume-control label {
+            margin-right: 10px;
+        }
+
+        .volume-control input {
+            width: 200px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Client Audio Streaming</h1>
-    <button id="startClient">Start Client</button>
-    <audio id="audioPlayer" controls></audio>
-    
+    <div class="container">
+        <h1>Client Audio Streaming</h1>
+        
+        <div class="status" id="connectionStatus">Waiting for connection...</div>
+        
+        <div class="audio-controls">
+            <audio id="audioPlayer" controls autoplay></audio>
+            
+            <div class="volume-control">
+                <label for="volume">Volume:</label>
+                <input type="range" id="volume" min="0" max="1" step="0.1" value="1">
+            </div>
+        </div>
+        
+        <button id="startClient">Connect to Stream</button>
+        <button id="stopClient" disabled>Disconnect</button>
+        <button id="backToMaster">Back to Master View</button>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        document.getElementById('startClient').addEventListener('click', () => {
-            const socket = io();
+        // Modern WebRTC implementation with updated APIs for Electron 22
+        
+        // Variables
+        let peerConnection = null;
+        let socket = null;
 
-            // Request audio stream from master
-            socket.emit('requestStream');
+        // DOM Elements
+        const connectButton = document.getElementById('startClient');
+        const stopButton = document.getElementById('stopClient');
+        const backButton = document.getElementById('backToMaster');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const volumeControl = document.getElementById('volume');
+        const statusElement = document.getElementById('connectionStatus');
 
-            // Handle received audio stream from master
-            socket.on('audioStream', (stream) => {
-                const audioElement = document.getElementById('audioPlayer');
-                audioElement.srcObject = stream;
-                audioElement.play(); // Start playing the audio stream
+        // Initialize socket connection
+        function initializeConnection() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                updateStatus('Connected to server');
             });
+
+            socket.on('disconnect', () => {
+                updateStatus('Disconnected from server');
+                handleDisconnect();
+            });
+
+            // Handle offer from master
+            socket.on('offer', (offer) => {
+                console.log('Received offer from master');
+                handleOffer(offer);
+            });
+
+            // Handle ICE candidates
+            socket.on('candidate', (candidate) => {
+                console.log('Received ICE candidate');
+                
+                if (peerConnection) {
+                    peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
+                        .catch(error => {
+                            console.error('Error adding ICE candidate:', error);
+                        });
+                }
+            });
+        }
+
+        // Connect to audio stream
+        async function connectToStream() {
+            try {
+                connectButton.disabled = true;
+                updateStatus('Requesting connection...');
+                
+                // Send connection request to server
+                socket.emit('requestConnection');
+                
+            } catch (error) {
+                console.error('Error connecting to stream:', error);
+                updateStatus('Connection error: ' + error.message);
+                connectButton.disabled = false;
+            }
+        }
+
+        // Handle offer from master
+        async function handleOffer(offer) {
+            try {
+                updateStatus('Received connection offer...');
+                
+                // Create peer connection if it doesn't exist
+                if (!peerConnection) {
+                    createPeerConnection();
+                }
+                
+                // Set remote description (master's offer)
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+                
+                // Create and send answer
+                const answer = await peerConnection.createAnswer({
+                    voiceActivityDetection: true
+                });
+                
+                await peerConnection.setLocalDescription(answer);
+                
+                // Wait for ICE gathering to complete
+                await waitForIceGathering();
+                
+                socket.emit('answer', peerConnection.localDescription);
+                
+                updateStatus('Connected to audio stream');
+                stopButton.disabled = false;
+                
+            } catch (error) {
+                console.error('Error handling offer:', error);
+                updateStatus('Connection error: ' + error.message);
+                connectButton.disabled = false;
+            }
+        }
+
+        // Wait for ICE gathering to complete or timeout
+        function waitForIceGathering() {
+            return new Promise(resolve => {
+                if (peerConnection.iceGatheringState === 'complete') {
+                    resolve();
+                    return;
+                }
+                
+                const checkState = () => {
+                    if (peerConnection.iceGatheringState === 'complete') {
+                        peerConnection.removeEventListener('icegatheringstatechange', checkState);
+                        resolve();
+                    }
+                };
+                
+                peerConnection.addEventListener('icegatheringstatechange', checkState);
+                
+                // Add a timeout to prevent hanging indefinitely
+                setTimeout(resolve, 5000);
+            });
+        }
+
+        // Create WebRTC peer connection with modern configuration
+        function createPeerConnection() {
+            const configuration = {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
+                ],
+                iceCandidatePoolSize: 10,
+                bundlePolicy: 'max-bundle',
+                rtcpMuxPolicy: 'require',
+                sdpSemantics: 'unified-plan'
+            };
+
+            peerConnection = new RTCPeerConnection(configuration);
+
+            // Set up ICE candidate handling
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('candidate', event.candidate);
+                }
+            };
+
+            // Handle incoming audio tracks
+            peerConnection.ontrack = (event) => {
+                console.log('Received audio track');
+                audioPlayer.srcObject = event.streams[0];
+                updateStatus('Audio stream connected');
+            };
+
+            // Connection state monitoring
+            peerConnection.oniceconnectionstatechange = () => {
+                updateStatus(`Connection state: ${peerConnection.iceConnectionState}`);
+                
+                if (peerConnection.iceConnectionState === 'disconnected' || 
+                    peerConnection.iceConnectionState === 'failed' ||
+                    peerConnection.iceConnectionState === 'closed') {
+                    handleDisconnect();
+                }
+            };
+            
+            peerConnection.onconnectionstatechange = () => {
+                console.log(`Connection state changed: ${peerConnection.connectionState}`);
+                if (peerConnection.connectionState === 'connected') {
+                    updateStatus('Connected to master');
+                } else if (peerConnection.connectionState === 'failed' || 
+                           peerConnection.connectionState === 'disconnected' ||
+                           peerConnection.connectionState === 'closed') {
+                    handleDisconnect();
+                }
+            };
+        }
+
+        // Disconnect from stream
+        function disconnectFromStream() {
+            handleDisconnect();
+            updateStatus('Disconnected from stream');
+        }
+
+        // Clean up on disconnect
+        function handleDisconnect() {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            
+            if (audioPlayer.srcObject) {
+                const tracks = audioPlayer.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
+                audioPlayer.srcObject = null;
+            }
+            
+            // Update UI
+            connectButton.disabled = false;
+            stopButton.disabled = true;
+        }
+
+        // Update status display
+        function updateStatus(message) {
+            statusElement.textContent = message;
+            console.log(message);
+        }
+
+        // Handle volume change
+        function handleVolumeChange() {
+            audioPlayer.volume = volumeControl.value;
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize socket.io connection
+            initializeConnection();
+        });
+
+        connectButton.addEventListener('click', connectToStream);
+        stopButton.addEventListener('click', disconnectFromStream);
+        volumeControl.addEventListener('input', handleVolumeChange);
+        
+        backButton.addEventListener('click', () => {
+            disconnectFromStream();
+            window.location.href = '/master';
         });
     </script>
 </body>

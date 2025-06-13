@@ -5,145 +5,388 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Master Audio Streaming</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #770055;
+            color: white;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        button {
+            background-color: #ac1e84;
+            color: white;
+            border: 2px solid #f5dcdc;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            display: block;
+            margin: 20px auto;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #de78e9;
+        }
+
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        .status {
+            text-align: center;
+            margin: 10px 0;
+            font-size: 14px;
+            height: 20px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+    </style>
 </head>
 
 <body>
-    <h1>Master Audio Streaming</h1>
-    <button id="startMaster">Start Master</button>
-    <button id="openClient">Open Client</button>
+    <div class="container">
+        <h1>Master Audio Streaming</h1>
+
+        <div class="controls">
+            <button id="startMaster">Start Broadcasting</button>
+            <button id="stopMaster" disabled>Stop Broadcasting</button>
+        </div>
+
+        <div class="status" id="connectionStatus">Not connected</div>
+
+        <canvas id="audioVisualizer"></canvas>
+
+        <button id="openClient">Open Client View</button>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
+        // Modern WebRTC implementation with updated APIs for Electron 22
+        
+        // Variables
+        let peerConnection = null;
+        let audioStream = null;
+        let socket = null;
+        let audioContext = null;
+        let analyser = null;
+        let animationFrame = null;
 
-        document.getElementById('openClient').addEventListener('click', () => {
-            // Redirect to client.html
-            window.location.href = '/client.html';
-        });
-        let peerConnection;
+        // DOM Elements
+        const startButton = document.getElementById('startMaster');
+        const stopButton = document.getElementById('stopMaster');
+        const statusElement = document.getElementById('connectionStatus');
+        const openClientButton = document.getElementById('openClient');
+        const canvas = document.getElementById('audioVisualizer');
+        const canvasCtx = canvas.getContext('2d');
 
-        document.getElementById('startMaster').addEventListener('click', () => {
-            const socket = io();
-            const constraints = { audio: true };
+        // Initialize socket.io connection
+        function initializeConnection() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                updateStatus('Connected to server');
+            });
 
-            // Get audio stream from microphone
-            navigator.mediaDevices.getUserMedia(constraints)
-                .then(stream => {
-                    const audioTracks = stream.getAudioTracks();
-                    const audioTrack = audioTracks[0];
+            socket.on('disconnect', () => {
+                updateStatus('Disconnected from server');
+            });
 
-                    // Initialize WebRTC connection
-                    peerConnection = new RTCPeerConnection();
-
-                    // Add audio track to peer connection
-                    peerConnection.addTrack(audioTrack, stream);
-
-                    // Setup audio processing and visualization
-                    setupAudioProcessing(stream);
-
-                    // Send offer to signaling server
-                    peerConnection.createOffer()
-                        .then(offer => peerConnection.setLocalDescription(offer))
-                        .then(() => {
-                            socket.emit('offer', peerConnection.localDescription);
+            // Handle received answer from client
+            socket.on('answer', (answer) => {
+                console.log('Received answer from client');
+                
+                if (peerConnection) {
+                    peerConnection.setRemoteDescription(new RTCSessionDescription(answer))
+                        .catch(error => {
+                            console.error('Error setting remote description:', error);
+                            updateStatus('Connection failed');
                         });
-
-                    // Handle ICE candidates
-                    peerConnection.onicecandidate = (event) => {
-                        if (event.candidate) {
-                            socket.emit('candidate', event.candidate);
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error accessing microphone:', error);
-                })
-        })
-
-        // Connect to Socket.IO server
-        const socket = io()
-
-        // Handle received offer from master
-        socket.on('offer', (offer) => {
-            console.log('Received offer from master:', offer)
-
-            // Create peer connection
-            peerConnection = new RTCPeerConnection()
-
-            // Set remote description
-            peerConnection.setRemoteDescription(offer)
-                .then(() => {
-                    // Create answer
-                    return peerConnection.createAnswer()
-                })
-                .then(answer => {
-                    // Set local description
-                    return peerConnection.setLocalDescription(answer)
-                })
-                .then(() => {
-                    // Send answer to signaling server
-                    socket.emit('answer', peerConnection.localDescription)
-                })
-                .catch(error => {
-                    console.error('Error setting remote description:', error)
-                })
+                }
+            });
 
             // Handle ICE candidates
+            socket.on('candidate', (candidate) => {
+                console.log('Received ICE candidate');
+                
+                if (peerConnection) {
+                    peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
+                        .catch(error => {
+                            console.error('Error adding ICE candidate:', error);
+                        });
+                }
+            });
+        }
+
+        // Start master broadcasting
+        async function startMaster() {
+            try {
+                // Update UI
+                startButton.disabled = true;
+                updateStatus('Requesting microphone access...');
+
+                // Get audio stream with modern constraints
+                const constraints = {
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                        channelCount: 2,
+                        sampleRate: 48000
+                    },
+                    video: false
+                };
+
+                audioStream = await navigator.mediaDevices.getUserMedia(constraints);
+                updateStatus('Microphone access granted');
+
+                // Set up audio processing
+                setupAudioProcessing(audioStream);
+
+                // Create WebRTC connection with modern configuration
+                createPeerConnection();
+
+                // Add audio track to peer connection
+                audioStream.getAudioTracks().forEach(track => {
+                    peerConnection.addTrack(track, audioStream);
+                });
+
+                // Create and send offer
+                const offer = await peerConnection.createOffer({
+                    offerToReceiveAudio: true,
+                    voiceActivityDetection: true
+                });
+                
+                await peerConnection.setLocalDescription(offer);
+                
+                // Wait for ICE gathering to complete for more reliable connections
+                await waitForIceGathering();
+                
+                socket.emit('offer', peerConnection.localDescription);
+                
+                updateStatus('Broadcasting audio...');
+                stopButton.disabled = false;
+
+            } catch (error) {
+                console.error('Error starting master:', error);
+                updateStatus('Error: ' + error.message);
+                startButton.disabled = false;
+            }
+        }
+
+        // Wait for ICE gathering to complete or timeout
+        function waitForIceGathering() {
+            return new Promise(resolve => {
+                if (peerConnection.iceGatheringState === 'complete') {
+                    resolve();
+                    return;
+                }
+                
+                const checkState = () => {
+                    if (peerConnection.iceGatheringState === 'complete') {
+                        peerConnection.removeEventListener('icegatheringstatechange', checkState);
+                        resolve();
+                    }
+                };
+                
+                peerConnection.addEventListener('icegatheringstatechange', checkState);
+                
+                // Add a timeout to prevent hanging indefinitely
+                setTimeout(resolve, 5000);
+            });
+        }
+
+        // Stop master broadcasting
+        function stopMaster() {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+            }
+            
+            if (animationFrame) {
+                cancelAnimationFrame(animationFrame);
+                animationFrame = null;
+            }
+            
+            if (audioContext && audioContext.state !== 'closed') {
+                audioContext.close();
+                audioContext = null;
+            }
+            
+            // Clear canvas
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Update UI
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            updateStatus('Broadcast stopped');
+        }
+
+        // Create WebRTC peer connection with modern configuration
+        function createPeerConnection() {
+            const configuration = {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
+                ],
+                iceCandidatePoolSize: 10,
+                bundlePolicy: 'max-bundle',
+                rtcpMuxPolicy: 'require',
+                sdpSemantics: 'unified-plan'
+            };
+
+            peerConnection = new RTCPeerConnection(configuration);
+
+            // Set up ICE candidate handling
             peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    socket.emit('candidate', event.candidate)
+                    socket.emit('candidate', event.candidate);
                 }
-            }
+            };
 
-            // Handle incoming audio tracks
-            peerConnection.ontrack = (event) => {
-                const stream = event.streams[0]
-                socket.emit('audioStream', stream) // Send audio stream to client
-            }
-        })
+            // Connection state monitoring
+            peerConnection.oniceconnectionstatechange = () => {
+                updateStatus(`Connection state: ${peerConnection.iceConnectionState}`);
+            };
+            
+            peerConnection.onconnectionstatechange = () => {
+                console.log(`Connection state changed: ${peerConnection.connectionState}`);
+                if (peerConnection.connectionState === 'connected') {
+                    updateStatus('Connected to client');
+                } else if (peerConnection.connectionState === 'failed' || 
+                           peerConnection.connectionState === 'disconnected' ||
+                           peerConnection.connectionState === 'closed') {
+                    updateStatus(`Connection ${peerConnection.connectionState}`);
+                }
+            };
 
-        // Handle received ICE candidates
-        socket.on('candidate', (candidate) => {
-            console.log('Received ICE candidate from peer:', candidate)
-            peerConnection.addIceCandidate(candidate)
-        })
+            peerConnection.onicegatheringstatechange = () => {
+                console.log(`ICE gathering state: ${peerConnection.iceGatheringState}`);
+            };
+        }
 
-        // Audio Processing
+        // Set up audio visualization
         function setupAudioProcessing(stream) {
-            const audioCtx = new AudioContext();
-            const source = audioCtx.createMediaStreamSource(stream)
-            const analyser = audioCtx.createAnalyser()
-            source.connect(analyser).connect(audioCtx.destination)
-            visualizeAudio(analyser)
-        }
-
-        function visualizeAudio(analyser) {
-            const canvas = document.getElementById('audioVisualizer')
-            const canvasCtx = canvas.getContext('2d')
-
-            analyser.fftSize = 256
-            const bufferLength = analyser.frequencyBinCount
-            const dataArray = new Uint8Array(bufferLength)
-
-            function renderFrame() {
-                requestAnimationFrame(renderFrame)
-                analyser.getByteFrequencyData(dataArray)
-
-                // Basic drawing on canvas using dataArray
-                canvasCtx.clearRect(0, 0, canvas.width, canvas.height)
-                canvasCtx.fillStyle = 'rgb(0, 0, 0)'
-                let bars = 100
-                let barWidth = (canvas.width / bars) - 1
-                let x = 0
-
-                for (let i = 0; i < bars; i++) {
-                    let barHeight = dataArray[i]
-
-                    canvasCtx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2)
-                    x += barWidth + 1
-                }
+            try {
+                // Use AudioContext with modern options
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    latencyHint: 'interactive',
+                    sampleRate: 48000
+                });
+                
+                const source = audioContext.createMediaStreamSource(stream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                analyser.smoothingTimeConstant = 0.8;
+                
+                // Connect nodes
+                source.connect(analyser);
+                
+                // Visualize audio
+                visualizeAudio();
+            } catch (error) {
+                console.error('Error setting up audio processing:', error);
+                updateStatus('Audio visualization error');
             }
-            renderFrame()
         }
+
+        // Audio visualization
+        function visualizeAudio() {
+            if (!analyser) return;
+            
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            
+            // Make sure canvas dimensions are set
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+            
+            const renderFrame = () => {
+                if (!analyser) return;
+                
+                animationFrame = requestAnimationFrame(renderFrame);
+                analyser.getByteFrequencyData(dataArray);
+                
+                // Clear canvas
+                canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw frequency bars
+                const barWidth = (canvas.width / bufferLength) * 2.5;
+                let x = 0;
+                
+                for (let i = 0; i < bufferLength; i++) {
+                    const barHeight = dataArray[i] / 2;
+                    
+                    // Create gradient
+                    const gradient = canvasCtx.createLinearGradient(0, 0, 0, canvas.height);
+                    gradient.addColorStop(0, '#de78e9');
+                    gradient.addColorStop(1, '#ac1e84');
+                    
+                    canvasCtx.fillStyle = gradient;
+                    canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                    
+                    x += barWidth + 1;
+                }
+            };
+            
+            renderFrame();
+        }
+
+        // Update status display
+        function updateStatus(message) {
+            statusElement.textContent = message;
+            console.log(message);
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize socket.io connection
+            initializeConnection();
+            
+            // Size canvas properly
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+        });
+
+        startButton.addEventListener('click', startMaster);
+        stopButton.addEventListener('click', stopMaster);
+        
+        openClientButton.addEventListener('click', () => {
+            window.location.href = '/client';
+        });
     </script>
 </body>
 
