@@ -1,57 +1,57 @@
 # CLEVER VNC Client
 
-A desktop application built with Electron to provide screen casting and VNC functionality for the CLEVER system. This application enables remote screen monitoring, casting to video walls, and secure communication through websockify.
+CLEVER VNC Client is an Electron-based application that provides an easy way to share VNC screens via WebSockets.
 
-## Overview
+## Features
 
-CLEVER VNC Client enables seamless screen sharing and remote control by:
+- Automatic VNC server detection
+- WebSocket to VNC proxy
+- Simple UI for configuration
+- System tray integration
+- Audio streaming support
 
-- Creating a secure websockify bridge between VNC and WebSockets
-- Supporting hostname-based connections rather than IP-only addressing
-- Providing audio streaming capabilities
-- Enabling closed-loop communication with the CLEVER controller system
-- Auto-reconnection and auto-startup functionality
+## Requirements
 
-## Installation
+- Node.js 14.x or higher
+- Electron 22.x
+- VNC Server (such as TightVNC) running on the host machine
 
-### Prerequisites
+## Usage
 
-- Node.js (v14 or higher recommended)
-- npm (v6 or higher recommended)
-- VNC Server installed and running (e.g., TightVNC)
+The application will automatically detect VNC servers running on ports 5900-5905 and make them available through WebSockets.
 
-### Development Setup
+### Configuration
 
-1. Install global dependencies:
-   ```bash
-   npm install -g electron
-   ```
+The following settings can be configured:
 
-2. Install project dependencies:
-   ```bash
-   npm install
-   ```
+- Auto startup when PC starts
+- Audio streaming
+- Auto restart interval
 
-3. Start the application in development mode:
-   ```bash
-   npm start
-   ```
+## Development
 
-### Building the Application
+```bash
+# Install dependencies
+npm install
 
-Build for specific platforms:
+# Run the application
+npm start
 
-- Windows 32-bit:
-  ```bash
-  npm run win32
-  ```
+# Build the application
+npm run build
+```
 
-- Windows 64-bit:
-  ```bash
-  npm run win64
-  ```
+## Architecture
 
-- Ubuntu/Linux 32-bit:
+The application now uses a simplified architecture:
+- WebSockets proxy for VNC connections
+- Audio streaming via separate WebSocket connection
+- Electron main process for managing the application window and system tray
+- Renderer process for user interface
+
+## License
+
+Copyright © 2000-2023 by Closed-loop Technology Pte Ltd. All rights reserved.
   ```bash
   npm run ubuntu32
   ```

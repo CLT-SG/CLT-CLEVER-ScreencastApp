@@ -1,104 +1,123 @@
-const socket = io('http://localhost:8840');
-const peerConnection = new RTCPeerConnection();
+// Main renderer process code
+document.addEventListener('DOMContentLoaded', () => {
+  // Get references to window control buttons if they exist
+  const minimizeButton = document.getElementById('minimize-button');
+  const maximizeButton = document.getElementById('maximize-button');
+  const closeButton = document.getElementById('close-button');
+  const reloadButton = document.getElementById('reload-button');
+  const versionSpan = document.getElementById('app-version');
+  const statusDot = document.querySelector('.status-dot');
+  const startButton = document.getElementById('start-button');
+  const stopButton = document.getElementById('stop-button');
+  const restartButton = document.getElementById('restart-button');
 
-// UI elements
-const startMasterButton = document.getElementById('startMaster');
-const openClientButton = document.getElementById('openClient');
+  // Fetch version and update UI
+  if (versionSpan) {
+    window.api.getAppVersion().then(version => {
+      versionSpan.textContent = version;
+    }).catch(err => {
+      console.error('Error fetching app version:', err);
+    });
+  }
 
-// -------------------- Master Functions -------------------- 
+  // Window control buttons
+  if (minimizeButton) {
+    minimizeButton.addEventListener('click', () => {
+      window.api.minimize();
+    });
+  }
 
-function startMaster() {
-  const constraints = {
-    audio: {
-      mandatory: {
-        // Example: Enforce Opus if supported
-        googOpusStereo: true 
+  if (maximizeButton) {
+    maximizeButton.addEventListener('click', () => {
+      window.api.maximize();
+    });
+  }
+
+  if (closeButton) {
+    closeButton.addEventListener('click', () => {
+      window.api.close();
+    });
+  }
+
+  if (reloadButton) {
+    reloadButton.addEventListener('click', () => {
+      window.api.reloadPage();
+    });
+  }
+
+  // Start/Stop/Restart buttons with simplified functionality
+  if (startButton) {
+    startButton.addEventListener('click', () => {
+      window.api.setTrayIcon('publish');
+      if (statusDot) {
+        statusDot.classList.remove('offline');
+        statusDot.classList.add('online');
       }
-    }
-  };
-
-  navigator.mediaDevices.getUserMedia(constraints)
-    .then(stream => {
-      stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
-      setupAudioProcessing(stream);
-      callClient();
-    })
-    .catch(error => console.error('Error accessing microphone:', error));
-}
-
-function setupAudioProcessing(stream) {
-  const audioCtx = new AudioContext();
-  const source = audioCtx.createMediaStreamSource(stream);
-  const analyser = audioCtx.createAnalyser();
-  source.connect(analyser).connect(audioCtx.destination); 
-
-  visualizeAudio(analyser);
-}
-
-function visualizeAudio(analyser) {
-  const canvas = document.createElement('canvas'); 
-  document.body.appendChild(canvas); 
-  const canvasCtx = canvas.getContext('2d');
-
-  analyser.fftSize = 256; 
-  const bufferLength = analyser.frequencyBinCount;
-  const dataArray = new Uint8Array(bufferLength);
-
-  function renderFrame() {
-    requestAnimationFrame(renderFrame);
-    analyser.getByteFrequencyData(dataArray);
-
-    // Basic drawing on canvas using dataArray
-    canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
-    canvasCtx.fillStyle = 'rgb(0, 0, 0)';
-    let bars = 100;
-    let barWidth = (canvas.width / bars) - 1;
-    let x = 0;
-
-    for (let i = 0; i < bars; i++) {
-      let barHeight = dataArray[i];
-
-      canvasCtx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
-      x += barWidth + 1;
-    }
+      console.log('VNC sharing started');
+    });
   }
-  renderFrame();
-}
 
-async function callClient() {
-  const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(offer);
-  socket.emit('offer', offer);
-}
-
-// -------------------- WebRTC Signaling (Master and Client) -------------------- 
-socket.on('answer', async (answer) => {
-  await peerConnection.setRemoteDescription(answer);
-});
-
-peerConnection.onicecandidate = (event) => {
-  if (event.candidate) {
-    socket.emit('candidate', event.candidate);
+  if (stopButton) {
+    stopButton.addEventListener('click', () => {
+      window.api.setTrayIcon('stopped');
+      if (statusDot) {
+        statusDot.classList.remove('online');
+        statusDot.classList.add('offline');
+      }
+      console.log('VNC sharing stopped');
+    });
   }
-};
 
-socket.on('candidate', async (candidate) => {
-  await peerConnection.addIceCandidate(candidate);
-});
+  if (restartButton) {
+    restartButton.addEventListener('click', () => {
+      window.api.restartApp();
+    });
+  }
 
-// -------------------- Client Window -------------------- 
-openClientButton.addEventListener('click', () => {
-  const clientWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false
+  // Handle settings checkboxes
+  const settingsCheckboxes = document.querySelectorAll('.settings-checkbox');
+  if (settingsCheckboxes.length > 0) {
+    settingsCheckboxes.forEach(checkbox => {
+      if (checkbox) {
+        checkbox.addEventListener('change', (e) => {
+          const setting = e.target.getAttribute('data-setting');
+          const value = e.target.checked;
+          if (setting) {
+            window.api.saveConfig(setting, `exports.${setting} = ${value}`, value);
+          }
+        });
+      }
+    });
+  }
+
+  // Initialize connection status
+  window.api.getIpAddress().then(ip => {
+    const ipElement = document.getElementById('ip-address');
+    if (ipElement) {
+      ipElement.textContent = ip;
+      console.log(`IP Address detected: ${ip}`);
     }
+  }).catch(err => {
+    console.error('Error getting IP address:', err);
   });
 
-  clientWindow.loadURL(`file://${__dirname}/client.html`);
+  // Scan for VNC ports
+  window.api.scanPortsExtended().then(ports => {
+    console.log('Available VNC ports:', ports);
+    if (ports.length > 0 && statusDot) {
+      statusDot.classList.add('ready');
+      
+      // Display port information
+      const portsInfo = ports.map(port => `${port.path} -> ${port.target}`).join(', ');
+      console.log(`VNC ports configured: ${portsInfo}`);
+    }
+  }).catch(err => {
+    console.error('Error scanning ports:', err);
+  });
+  
+  // Set current year in copyright
+  const yearElement = document.getElementById('current-year');
+  if (yearElement) {
+    yearElement.textContent = new Date().getFullYear();
+  }
 });
-
-// -------------------- Event Listeners -------------------- 
-startMasterButton.addEventListener('click', startMaster);
