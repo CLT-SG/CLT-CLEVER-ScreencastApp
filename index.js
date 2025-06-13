@@ -72,6 +72,7 @@ if (!fs.existsSync(logdir)) {
 let win = null
 let appIcon = null
 let autoreload
+let isSharing = false // Track sharing state
 
 const vncport = (process.platform == 'linux') ? '5900' : '5900'
 const screencastAutoLaunch = new AutoLaunch({
@@ -270,12 +271,15 @@ try {
         },
         {
           label: 'Start Sharing',
+          id: 'start-sharing',
           click: function () {
             win.webContents.send('tray-action', 'start');
           }
         },
         {
           label: 'Stop Sharing',
+          id: 'stop-sharing',
+          enabled: false, // Initially disabled since sharing is off
           click: function () {
             win.webContents.send('tray-action', 'stop');
           }
@@ -322,6 +326,14 @@ try {
               }
             },
             {
+              label: 'Auto Share on Launch',
+              type: 'checkbox',
+              checked: config.autoshare,
+              click: (item) => {
+                replaceConfig('autoshare', `exports.autoshare = ${item.checked}`);
+              }
+            },
+            {
               label: 'Enable Audio',
               type: 'checkbox',
               checked: config.audio,
@@ -355,6 +367,12 @@ try {
       function updateTrayMenu(status) {
         const statusLabel = status ? 'Connected' : 'Disconnected';
         contextMenu.items[0].label = `Status: ${statusLabel}`;
+        
+        // Update button enabled states based on status
+        contextMenu.items[2].enabled = !status; // Start Sharing
+        contextMenu.items[3].enabled = status;  // Stop Sharing
+        
+        isSharing = status; // Update sharing state
         appIcon.setContextMenu(contextMenu);
       }
 
@@ -492,8 +510,15 @@ try {
 
       // Set tray context menu
       appIcon.setContextMenu(contextMenu)
+
+      // Fix double-click behavior to properly show window
       appIcon.on('double-click', () => {
-        win.isVisible() ? win.hide() : win.show()
+        if (!win.isVisible()) {
+          win.show()
+          win.focus()
+        } else {
+          win.hide()
+        }
       })
 
       // Set up auto reload based on config
@@ -512,6 +537,16 @@ try {
       win.on('minimize', (event) => {
         event.preventDefault()
         win.hide()
+      })
+
+      // Track window visibility for tray double-click handler
+      win.on('hide', () => {
+        log.info('Window hidden')
+      })
+
+      win.on('show', () => {
+        log.info('Window shown')
+        win.focus() // Ensure window is focused when shown
       })
 
       // Auto hide after 5 seconds
@@ -566,6 +601,15 @@ async function checkVncAndOpenWindow() {
       pingstat = false
       log.info(`VNC server found on port ${vncport}, loading application`)
       log.info(`Host information: IP=${hostInfo.ip}, Hostname=${hostInfo.hostname}, Hostname.local=${hostInfo.hostnameLocal}`)
+      
+      // Auto-start sharing if enabled in config
+      if (config.autoshare) {
+        // Give time for the renderer to initialize
+        setTimeout(() => {
+          log.info('Auto-starting sharing based on config setting')
+          win.webContents.send('tray-action', 'start')
+        }, 3000)
+      }
     } else {
       win.hide()
       const options = {
