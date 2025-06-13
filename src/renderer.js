@@ -97,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Listen for tray actions
   window.api.onTrayAction((action) => {
+    console.log('Received tray action:', action);
     if (action === 'start') {
       startSharing();
     } else if (action === 'stop') {
@@ -194,6 +195,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     showNotification('Host information detected', 'success');
+    
+    // Initialize checkbox states from config
+    // Note: we're not explicitly setting the checkbox here since it's already 
+    // set in HTML, but in a full implementation you would want to query the current config
   }).catch(err => {
     console.error('Error getting host information:', err);
     showNotification('Failed to detect host information', 'error');
