@@ -15,71 +15,103 @@
     <div class="window-title-bar">
       <div class="window-title">CLEVER VNC Client <span id="app-version"></span></div>
       <div class="window-controls-container">
-        <button id="minimize-button" class="window-control-button">
+        <button id="minimize-button" class="window-control-button" title="Minimize">
           <span class="window-control-icon">&#8211;</span>
         </button>
-        <button id="maximize-button" class="window-control-button">
+        <button id="maximize-button" class="window-control-button" title="Maximize">
           <span class="window-control-icon">&#9744;</span>
         </button>
-        <button id="close-button" class="window-control-button">
+        <button id="close-button" class="window-control-button" title="Close">
           <span class="window-control-icon">&#10005;</span>
         </button>
       </div>
     </div>
   </div>
 
-  <div class="top top-1">
-    CLEVER VNC Client
-  </div>
-  <div class="top top-2">
-    Screencast & Desktop Sharing
-  </div>
-  
-  <div class="host-info-container">
-    <div class="host-info-item">
-      <span class="host-info-label">IP Address:</span>
-      <span id="ip-address" class="host-info-value">Checking...</span>
+  <div class="app-container">
+    <div class="header-section">
+      <div class="header-text">
+        <h1>CLEVER VNC Client</h1>
+        <p class="subtitle">Screencast & Desktop Sharing</p>
+      </div>
     </div>
-    <div class="host-info-item">
-      <span class="host-info-label">Hostname:</span>
-      <span id="hostname" class="host-info-value">Checking...</span>
+    
+    <div class="host-info-card">
+      <div class="card-header">
+        <h2>Connection Information</h2>
+        <div class="connection-indicator">
+          <span>Status:</span>
+          <span class="status-dot offline" id="status-indicator"></span>
+        </div>
+      </div>
+      
+      <div class="host-info-container">
+        <div class="host-info-item">
+          <span class="host-info-label">IP Address:</span>
+          <span id="ip-address" class="host-info-value copy-value" title="Click to copy">Checking...</span>
+          <button class="copy-button" data-target="ip-address">Copy</button>
+        </div>
+        <div class="host-info-item">
+          <span class="host-info-label">Hostname:</span>
+          <span id="hostname" class="host-info-value copy-value" title="Click to copy">Checking...</span>
+          <button class="copy-button" data-target="hostname">Copy</button>
+        </div>
+        <div class="host-info-item">
+          <span class="host-info-label">FQDN:</span>
+          <span id="hostname-local" class="host-info-value copy-value" title="Click to copy">Checking...</span>
+          <button class="copy-button" data-target="hostname-local">Copy</button>
+        </div>
+      </div>
     </div>
-    <div class="host-info-item">
-      <span class="host-info-label">FQDN:</span>
-      <span id="hostname-local" class="host-info-value">Checking...</span>
-    </div>
-  </div>
 
-  <div class="container-button">
-    <button id="start-button">Start</button>
-    <button id="stop-button">Stop</button>
-  </div>
+    <div class="control-panel">
+      <div class="control-buttons">
+        <button id="start-button" class="action-button start-button">
+          <span class="button-icon">▶</span>
+          <span class="button-text">Start Sharing</span>
+        </button>
+        <button id="stop-button" class="action-button stop-button">
+          <span class="button-icon">■</span>
+          <span class="button-text">Stop Sharing</span>
+        </button>
+        <button id="restart-button" class="action-button reset-button">
+          <span class="button-icon">↻</span>
+          <span class="button-text">Restart</span>
+        </button>
+      </div>
+    </div>
+    
+    <div class="vnc-ports-container card">
+      <h3>Available VNC Connections</h3>
+      <div id="vnc-ports-info" class="card-content">
+        <div class="loading-spinner">
+          <div class="spinner"></div>
+          <p>Scanning for VNC ports...</p>
+        </div>
+      </div>
+    </div>
 
-  <div class="connection-status">
-    <span>Connection Status:</span>
-    <span class="status-dot offline"></span>
-  </div>
-  
-  <div class="vnc-ports-container">
-    <h3>Available VNC Connections:</h3>
-    <div id="vnc-ports-info">
-      <p>Scanning for VNC ports...</p>
+    <div class="settings-panel card">
+      <h3>Settings</h3>
+      <div class="card-content">
+        <div class="settings-row">
+          <div class="setup">
+            <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="autostartup" id="autostartup"
+              checked>
+            <label for="autostartup">Auto startup when PC starts</label>
+          </div>
+          <div class="setup">
+            <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="audio" id="audio" checked>
+            <label for="audio">Enable Audio</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notification-area" id="notification-area">
+      <!-- Notifications will appear here -->
     </div>
   </div>
-
-  <div class="container-config">
-    <div class="setup">
-      <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="autostartup" id="autostartup"
-        checked>
-      <label for="autostartup">Auto startup when PC starts</label>
-    </div>
-    <div class="setup">
-      <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="audio" id="audio" checked>
-      <label for="audio">Enable Audio</label>
-    </div>
-  </div>
-
-  <button id="restart-button" class="reset-btn">Restart</button>
 
   <div class="copyright">
     <div class="clt-logo">
@@ -92,10 +124,6 @@
   </div>
 
   <script src="renderer.js"></script>
-  <script>
-    // Set current year in copyright
-    document.getElementById('current-year').textContent = new Date().getFullYear();
-  </script>
 </body>
 
 </html>

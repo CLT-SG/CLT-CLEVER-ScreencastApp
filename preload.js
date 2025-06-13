@@ -57,7 +57,18 @@ contextBridge.exposeInMainWorld('api', {
   maximize: () => ipcRenderer.invoke('maximize-window'),
   close: () => ipcRenderer.invoke('close-window'),
   openAbout: () => ipcRenderer.invoke('open-about'),
-  getHostInfo: () => ipcRenderer.invoke('get-host-info')
+  getHostInfo: () => ipcRenderer.invoke('get-host-info'),
+
+  // Tray control
+  updateTrayStatus: (status) => ipcRenderer.invoke('update-tray-status', status),
+  
+  // Listen for tray actions
+  onTrayAction: (callback) => {
+    ipcRenderer.on('tray-action', (_, action) => callback(action));
+    return () => {
+      ipcRenderer.removeAllListeners('tray-action');
+    };
+  },
 })
 
 // Log preload execution
