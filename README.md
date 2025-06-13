@@ -4,7 +4,7 @@ CLEVER Screencast KVM is a desktop application built with Electron that provides
 
 ## Features
 
-- Multiple connection options: IP address, short hostname, and FQDN (.local) hostname
+- Multiple connection options: IP address, short hostname for windows, and FQDN (.local) hostname for linux 
 - Automatic detection of available VNC ports (5900-5905)
 - WebSocket-based VNC streaming
 - Audio streaming through WebRTC (optional)
@@ -66,9 +66,10 @@ npm start
 npm run build
 
 # Build for specific platforms
-npm run build:win
-npm run build:mac
-npm run build:linux
+npm run win64
+npm run win32
+npm run ubuntu64
+npm run ubuntu32
 ```
 
 ## License
