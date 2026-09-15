@@ -28,6 +28,7 @@ const datelog = moment().format('YYYY-MM-DD')
 const config = require('./config')
 const { ConnectionManager } = require('./lib/connection-manager')
 const { mdnsHostname } = require('./lib/host-names')
+const { createUpdater } = require('./lib/updater')
 
 // Configure logging
 var log = require('electron-log')
@@ -79,6 +80,7 @@ let appIcon = null
 let autoreload
 let isSharing = false // Track sharing state
 let connectionManager = null
+let updater = null
 
 const vncport = (process.platform == 'linux') ? '5900' : '5900'
 const screencastAutoLaunch = new AutoLaunch({
@@ -137,15 +139,11 @@ const template = [
         }
       },
       {
-        label: 'Check for update',
-        click: async () => {
-          dialog.showMessageBox({
-            type: 'info',
-            title: 'Updates',
-            message: 'Checking for updates...',
-            buttons: ['OK']
-          })
-          // In a production app, this would connect to update server
+        label: 'Check for Updates',
+        click: () => {
+          if (updater) {
+            updater.checkForUpdates({ reason: 'menu' })
+          }
         }
       },
       (isMac ? {
@@ -371,6 +369,18 @@ try {
           }
         },
         {
+          label: 'Check for Updates',
+          click: function () {
+            if (updater) {
+              updater.checkForUpdates({ reason: 'tray' })
+            }
+            if (win) {
+              win.show()
+              win.focus()
+            }
+          }
+        },
+        {
           type: 'separator'
         },
         {
@@ -559,6 +569,8 @@ try {
         return connectionManager ? connectionManager.monitors : []
       })
 
+      startUpdater()
+
       // Set tray context menu
       appIcon.setContextMenu(contextMenu)
 
@@ -625,6 +637,9 @@ try {
       app.on('before-quit', () => {
         if (connectionManager) {
           connectionManager.stop()
+        }
+        if (updater) {
+          updater.stop()
         }
       })
 
@@ -729,4 +744,54 @@ function startConnectionManager() {
   connectionManager.start().catch((err) => {
     log.error(`CLEVER-Service connection manager failed: ${err}`)
   })
+}
+
+function startUpdater() {
+  if (updater) {
+    return
+  }
+
+  let autoUpdater = null
+  try {
+    autoUpdater = require('electron-updater').autoUpdater
+  } catch (err) {
+    log.warn(`electron-updater is unavailable: ${err.message}`)
+  }
+
+  updater = createUpdater({
+    autoUpdater,
+    app,
+    logger: log,
+    isPackaged: app.isPackaged,
+    sendStatus: (status) => {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('updater-status', status)
+      }
+    },
+    onReadyToInstall: (status) => {
+      const version = status.version || 'a new version'
+      const parent = win && !win.isDestroyed() ? win : null
+      dialog.showMessageBox(parent, {
+        type: 'info',
+        title: 'Update ready',
+        message: `Version ${version} is ready to install.`,
+        detail: 'Restart now to apply the update. CLEVER-Service, VNC, and monitor features resume after the application restarts.',
+        buttons: ['Restart and Install', 'Later'],
+        defaultId: 0,
+        cancelId: 1
+      }).then(({ response }) => {
+        if (response === 0 && updater) {
+          updater.installUpdate()
+        }
+      }).catch((err) => {
+        log.warn(`Update ready dialog failed: ${err.message}`)
+      })
+    }
+  })
+
+  ipcMain.handle('updater-status', () => updater.getStatus())
+  ipcMain.handle('updater-check', () => updater.checkForUpdates({ reason: 'manual' }))
+  ipcMain.handle('updater-download', () => updater.downloadUpdate())
+  ipcMain.handle('updater-install', () => updater.installUpdate())
+  updater.start()
 }

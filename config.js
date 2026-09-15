@@ -6,11 +6,11 @@ exports.autoshare = true
 
 // Window configuration
 exports.window = {
-  width: 450,         // Default window width in pixels
-  height: 800,         // Default window height in pixels
-  minWidth: 800,       // Minimum window width
-  minHeight: 600,      // Minimum window height
-  resizable: false     // Whether window can be resized
+  width: 1180,         // Default window width in pixels
+  height: 760,         // Default window height in pixels
+  minWidth: 1024,      // Minimum window width
+  minHeight: 700,      // Minimum window height
+  resizable: true      // Whether window can be resized
 }
 
 // Connection settings
