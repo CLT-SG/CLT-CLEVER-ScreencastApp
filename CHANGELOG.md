@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Default window is a resizable landscape dashboard instead of the tall utility layout
 - Menu and tray Check for Updates now call the updater module instead of a stub dialog
+- Dashboard stays visible after launch (close still hides to the tray)
 
 ### Fixed
 - VNC rescan now refreshes the connection table instead of leaving a spinner

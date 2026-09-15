@@ -37,8 +37,8 @@ exports.cleverService = {
 // Appearance settings
 exports.appearance = {
   theme: 'dark',       // UI theme ('dark' or 'light')
-  showSplash: true,    // Show splash screen on startup
-  splashDuration: 5000 // Duration to show splash screen in milliseconds
+  showSplash: false,   // Keep the dashboard visible after launch
+  splashDuration: 5000 // Duration used only when showSplash is true
 }
 
 // Debug and logging settings
