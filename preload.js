@@ -7,6 +7,8 @@ const os = require('os')
 // Load config safely
 const config = require(path.join(__dirname, 'config.js'))
 
+const dashboardState = require(path.join(__dirname, 'lib/dashboard-state'))
+
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('api', {
@@ -41,7 +43,8 @@ contextBridge.exposeInMainWorld('api', {
     pcname: config.pcname,
     autorestart: config.autorestart,
     autostartup: config.autostartup,
-    audio: config.audio
+    audio: config.audio,
+    autoshare: config.autoshare
   },
   
   // Application version (will be set by main process)
@@ -61,6 +64,10 @@ contextBridge.exposeInMainWorld('api', {
   saveServiceConfig: (partial) => ipcRenderer.invoke('save-service-config', partial),
   startServiceDiscovery: () => ipcRenderer.invoke('start-service-discovery'),
   getMonitors: () => ipcRenderer.invoke('get-monitors'),
+  getUpdateStatus: () => ipcRenderer.invoke('updater-status'),
+  checkForUpdates: () => ipcRenderer.invoke('updater-check'),
+  downloadUpdate: () => ipcRenderer.invoke('updater-download'),
+  installUpdate: () => ipcRenderer.invoke('updater-install'),
 
   // Tray control
   updateTrayStatus: (status) => ipcRenderer.invoke('update-tray-status', status),
@@ -84,6 +91,21 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.removeAllListeners('monitors-updated');
     };
   },
+  onUpdateStatus: (callback) => {
+    ipcRenderer.on('updater-status', (_, status) => callback(status));
+    return () => {
+      ipcRenderer.removeAllListeners('updater-status');
+    };
+  },
+})
+
+contextBridge.exposeInMainWorld('dashboardState', {
+  connectionStatusView: dashboardState.connectionStatusView,
+  updaterStatusView: dashboardState.updaterStatusView,
+  overallStatusView: dashboardState.overallStatusView,
+  formatTimestamp: dashboardState.formatTimestamp,
+  vncView: dashboardState.vncView,
+  monitorRows: dashboardState.monitorRows
 })
 
 // Log preload execution

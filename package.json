@@ -1,27 +1,44 @@
 {
   "name": "cleverscreencast",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "CLEVER Screencast KVM for screen sharing and remote access",
   "main": "index.js",
   "scripts": {
     "start": "electron .",
     "test": "node --test test/*.test.js",
-    "win32": "electron-builder --win --ia32",
-    "win64": "electron-builder --win --x64",
-    "ubuntu32": "electron-builder --linux --ia32",
-    "ubuntu64": "electron-builder --linux --x64"
+    "build": "electron-builder --dir --publish never",
+    "package": "electron-builder --publish never",
+    "package:win": "electron-builder --win --x64 --publish never",
+    "package:linux": "electron-builder --linux --x64 --publish never",
+    "package:mac": "electron-builder --mac --x64 --publish never",
+    "release": "electron-builder --publish always",
+    "win32": "electron-builder --win --ia32 --publish never",
+    "win64": "electron-builder --win --x64 --publish never",
+    "ubuntu32": "electron-builder --linux --ia32 --publish never",
+    "ubuntu64": "electron-builder --linux --x64 --publish never"
   },
-  "homepage": "www.closed-loop.biz",
+  "homepage": "https://github.com/CLT-SG/CLT-CLEVER-ScreencastApp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CLT-SG/CLT-CLEVER-ScreencastApp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CLT-SG/CLT-CLEVER-ScreencastApp/issues"
+  },
   "author": {
     "name": "Closed-Loop Technology Pte. Ltd",
     "email": "sales@closed-loop.biz"
   },
   "license": "ISC",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "async": "^3.2.5",
     "auto-launch": "^5.0.6",
     "cors": "^2.8.5",
     "electron-log": "^5.1.2",
+    "electron-updater": "^6.3.9",
     "express": "^4.19.1",
     "is-reachable": "^5.2.1",
     "moment": "^2.30.1",
@@ -30,29 +47,74 @@
   },
   "devDependencies": {
     "electron": "^22.3.25",
-    "electron-builder": "^24.6.3"
+    "electron-builder": "^24.13.3"
   },
   "build": {
     "appId": "screencast.client.app",
     "productName": "CLEVER_Screencast",
-    "copyright": "Copyright © 2000-2025, Closed-loop. All rights ® reserved",
+    "copyright": "Copyright © 2000-2026, Closed-loop. All rights ® reserved",
+    "artifactName": "CLEVER-Screencast-${os}-${arch}-${version}.${ext}",
     "directories": {
-      "output": "build/Release"
+      "output": "build/Release",
+      "buildResources": "src/assets/media"
     },
-    "compression": "maximum",
+    "files": [
+      "**/*",
+      "!test/**/*",
+      "!.github/**/*",
+      "!docs/**/*"
+    ],
+    "asar": true,
+    "compression": "normal",
+    "publish": {
+      "provider": "github",
+      "owner": "CLT-SG",
+      "repo": "CLT-CLEVER-ScreencastApp",
+      "releaseType": "release",
+      "private": true
+    },
+    "generateUpdatesFilesForAllChannels": true,
     "win": {
       "target": "nsis",
-      "icon": "build/icons/clt.ico"
+      "icon": "src/assets/media/icon-512.png",
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CLEVER Screencast",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "CLEVER-Screencast-Setup-${version}.${ext}"
     },
     "mac": {
-      "target": "dmg",
-      "icon": "build/icons/clt.icns"
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "src/assets/media/icon-512.png",
+      "category": "public.app-category.utilities",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "artifactName": "CLEVER-Screencast-${version}.${ext}"
     },
     "linux": {
-      "target": "deb",
-      "icon": "build/icons/clt.png",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "src/assets/media/icon-512.png",
       "category": "AudioVideo",
-      "desktop": "cltsvncapp"
+      "synopsis": "CLEVER Screencast KVM for screen sharing and remote access",
+      "desktop": {
+        "Name": "CLEVER Screencast",
+        "StartupWMClass": "cleverscreencast"
+      }
     }
   }
 }

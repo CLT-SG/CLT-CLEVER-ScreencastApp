@@ -5,6 +5,24 @@ All notable changes to the CLEVER Screencast KVM will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-09-15
+
+### Added
+- Electron Updater with Check for Updates, automatic check/download, and Restart and Install
+- GitHub Releases as the update provider (`CLT-SG/CLT-CLEVER-ScreencastApp`)
+- GitHub Actions CI and Windows/Linux/macOS release workflow
+- Compact professional dashboard for connection, monitors, VNC, and management
+- Dashboard last-heartbeat, registration, device ID, and update status from existing services
+- Deployment, updater, and release documentation
+
+### Changed
+- Default window is a resizable landscape dashboard instead of the tall utility layout
+- Menu and tray Check for Updates now call the updater module instead of a stub dialog
+- Dashboard stays visible after launch (close still hides to the tray)
+
+### Fixed
+- VNC rescan now refreshes the connection table instead of leaving a spinner
+
 ## [2.1.0] - 2023-11-14
 
 ### Added

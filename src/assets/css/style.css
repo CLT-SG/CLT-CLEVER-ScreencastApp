@@ -1,974 +1,582 @@
-@font-face {
-  font-family: PTSerif-Regular;
-  src: url('../fonts/PTSerif-Regular.ttf');
+:root {
+  --bg: #0e131a;
+  --bg-elevated: #151c26;
+  --bg-card: #18202b;
+  --bg-card-hover: #1d2734;
+  --border: #2a3545;
+  --text: #e7eef7;
+  --muted: #8b98a8;
+  --accent: #3b82f6;
+  --accent-strong: #2563eb;
+  --success: #22c55e;
+  --success-strong: #16a34a;
+  --warning: #eab308;
+  --danger: #ef4444;
+  --danger-strong: #dc2626;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  --radius: 10px;
+  --chrome: 52px;
+  --footer: 36px;
 }
 
-@font-face { 
-  font-family: Roboto-Medium; 
-  src: url('../fonts/Roboto-Medium.ttf'); 
-} 
+* {
+  box-sizing: border-box;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
-/* Hide scrollbars globally */
-::-webkit-scrollbar {
+*::-webkit-scrollbar,
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
   display: none;
 }
 
-* {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
-}
-
-/* Base styles */
 html,
 body {
   height: 100%;
-  margin: 0px;
-  padding: 0px;
-  background-color: #770055;
-  color: white;
-  position: fixed;
-  overflow-y: auto;
-  overflow-x: hidden;
-  width: 100%;
-  font-family: "Segoe UI", "Open Sans", "Ubuntu", "Calibri", "Corbel", Tahoma, Sans-Serif;
-  font-size: 1em;
-  
-  /* Hide scrollbar for Chrome, Safari and Opera */
-  &::-webkit-scrollbar {
-    display: none;
-  }
-  
-  /* Hide scrollbar for IE, Edge and Firefox */
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
-/* Hide scrollbars for all scrollable elements */
-* {
-  /* Hide scrollbar for Chrome, Safari and Opera */
-  &::-webkit-scrollbar {
-    display: none;
-  }
-  
-  /* Hide scrollbar for IE, Edge and Firefox */
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+body {
+  display: grid;
+  grid-template-rows: var(--chrome) minmax(0, 1fr) var(--footer);
 }
 
-/* Make sure card content is still scrollable even with hidden scrollbars */
-.card-content {
-  overflow-y: auto;
-  overflow-x: hidden;
-  max-height: 200px; /* Set a reasonable max height for scrollable content */
+.muted {
+  color: var(--muted);
 }
 
-/* Tables with many rows should still be scrollable */
-.vnc-ports-table {
-  max-height: 150px;
-  overflow-y: auto;
+.app-chrome {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 0 10px 0 14px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+  user-select: none;
 }
 
-/* Make notification area scrollable if many notifications */
-.notification-area {
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-/* App container for better layout */
-.app-container {
-  padding: 0 20px 20px 20px;
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-/* Header section with logo */
-.header-section {
+.chrome-brand {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 20px 0;
-  text-align: center;
+  gap: 10px;
+  min-width: 0;
 }
 
-.header-logo {
-  height: 70px;
-  margin-right: 20px;
+.chrome-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 6px;
+  padding: 2px;
 }
 
-.header-text h1 {
+.chrome-titles h1 {
   margin: 0;
-  font-size: 2em;
-  font-weight: 600;
-  color: white;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
 }
 
-.subtitle {
-  margin: 5px 0 0 0;
-  font-size: 1em;
-  opacity: 0.8;
+.chrome-titles p {
+  margin: 1px 0 0;
+  color: var(--muted);
+  font-size: 11px;
 }
 
-/* Card styles for consistent UI */
-.card {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  margin-bottom: 20px;
-  padding: 15px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.card h3 {
-  margin: 0 0 15px 0;
-  font-size: 1.2em;
-  font-weight: 600;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  padding-bottom: 10px;
-}
-
-.card-content {
-  padding: 10px 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  max-height: 200px; /* Set a reasonable max height for scrollable content */
-}
-
-.card-header {
+.chrome-status,
+.chrome-controls {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  padding-bottom: 10px;
+  gap: 8px;
+  -webkit-app-region: no-drag;
 }
 
-.card-header h2 {
-  margin: 0;
-  font-size: 1.3em;
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+  white-space: nowrap;
 }
 
-/* Host info styling - improved for responsiveness */
-.host-info-card {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  margin-bottom: 20px;
-  padding: 15px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+.badge[hidden] {
+  display: none !important;
 }
 
-.host-info-container {
+.badge::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.tone-success {
+  color: var(--success);
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.28);
+}
+
+.tone-warning {
+  color: var(--warning);
+  background: rgba(234, 179, 8, 0.12);
+  border-color: rgba(234, 179, 8, 0.3);
+}
+
+.tone-danger {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.tone-neutral {
+  color: var(--muted);
+  background: rgba(139, 152, 168, 0.12);
+  border-color: rgba(139, 152, 168, 0.24);
+}
+
+.window-control-button {
+  width: 32px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.window-control-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.window-control-button.close:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: 1.05fr 1.2fr;
+  grid-template-rows: auto minmax(132px, 0.9fr) minmax(0, 1.25fr);
+  gap: 10px;
+  padding: 10px 12px;
+  min-height: 0;
+}
+
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
-.host-info-row {
-  width: 100%;
+.panel-wide {
+  grid-column: 1 / -1;
 }
 
-.host-info-item {
+.panel-header {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  padding: 8px;
-  background-color: rgba(0, 0, 0, 0.1);
-  border-radius: 5px;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.host-info-label {
-  font-weight: 600;
-  width: 80px;
-  flex-shrink: 0;
+.panel-header h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #c5d0dc;
 }
 
-.host-info-value-container {
-  display: flex;
-  flex: 1;
-  align-items: center;
+.meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin: 0;
 }
 
-.host-info-value {
-  flex-grow: 1;
-  font-family: monospace;
-  padding: 5px 10px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+.meta-grid.compact {
+  grid-template-columns: 1fr 1fr;
+}
+
+.meta-grid dt {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.meta-grid dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.host-info-value:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
 .copy-value {
   cursor: pointer;
-  transition: background-color 0.2s;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.18);
 }
 
 .copy-value:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
 }
 
-.copy-button {
-  background-color: rgba(255, 255, 255, 0.2);
-  border: none;
-  border-radius: 4px;
-  color: white;
-  padding: 5px 10px;
-  margin-left: 10px;
-  cursor: pointer;
-  font-size: 0.8em;
-  transition: background-color 0.2s;
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  background: var(--muted);
 }
 
-.copy-button:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+.status-dot.offline,
+.status-dot.disconnected {
+  background: var(--danger);
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
 }
 
-/* Control panel */
-.control-panel {
-  margin-bottom: 20px;
+.status-dot.online,
+.status-dot.connected,
+.status-dot.ready {
+  background: var(--success);
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
 }
 
-.control-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-  padding: 10px 0;
+.status-dot.searching,
+.status-dot.reconnecting,
+.status-dot.warning {
+  background: var(--warning);
+  box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.15);
 }
 
-.action-button {
-  border: none;
-  border-radius: 8px;
-  color: white;
-  padding: 12px 20px;
-  font-size: 1em;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-width: 150px;
-  transition: all 0.2s;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.start-button {
-  background-color: #28a745;
-}
-
-.start-button:hover {
-  background-color: #218838;
-}
-
-.stop-button {
-  background-color: #dc3545;
-}
-
-.stop-button:hover {
-  background-color: #c82333;
-}
-
-.reset-button {
-  background-color: #17a2b8;
-}
-
-.reset-button:hover {
-  background-color: #138496;
-}
-
-.button-icon {
-  font-size: 1.2em;
-}
-
-.action-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Mini button for table actions */
-.mini-button {
-  background-color: rgba(255, 255, 255, 0.2);
-  border: none;
-  border-radius: 4px;
-  color: white;
-  padding: 4px 8px;
-  font-size: 0.8em;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.mini-button:hover {
-  background-color: rgba(255, 255, 255, 0.3);
-}
-
-/* Settings panel */
-.settings-panel {
-  margin-bottom: 20px;
-}
-
-.settings-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  justify-content: center;
-}
-
-.setup {
-  display: flex;
-  align-items: center;
-  padding: 5px;
-}
-
-.setup-chkbx {
-  width: 18px;
-  height: 18px;
-  margin-right: 10px;
-}
-
-/* Connection status indicator */
 .connection-indicator {
   display: flex;
   align-items: center;
   gap: 8px;
+  font-size: 12px;
 }
 
-.status-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  display: inline-block;
-  background-size: contain;
-}
-
-.status-dot.offline {
-  background-color: #ff3333;
-  box-shadow: 0 0 5px #ff3333;
-  background-image: url('../media/status-offline.svg');
-}
-
-.status-dot.online {
-  background-color: #33ff33;
-  box-shadow: 0 0 5px #33ff33;
-  background-image: url('../media/status-online.svg');
-}
-
-.status-dot.ready {
-  background-color: #33ff33;
-  box-shadow: 0 0 5px #33ff33;
-  background-image: url('../media/status-online.svg');
-}
-
-/* Animation for status indicator */
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.status-dot.online,
-.status-dot.ready {
-  animation: pulse 2s infinite;
-}
-
-.status-dot.searching,
-.status-dot.reconnecting {
-  background-color: #ffcc33;
-  box-shadow: 0 0 5px #ffcc33;
-  animation: pulse 1s infinite;
-}
-
-.service-config-row {
+.service-config-row,
+.settings-row {
+  display: flex;
   flex-wrap: wrap;
-  margin-top: 8px;
+  gap: 10px 16px;
 }
 
-.service-mode {
+.service-mode,
+.setup {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.9em;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .service-manual-fields {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 90px minmax(0, 1fr) 88px auto;
   gap: 8px;
-  margin: 10px 0;
+  align-items: end;
+}
+
+.service-manual-fields[hidden] {
+  display: none !important;
 }
 
 .service-manual-fields label {
   display: flex;
   flex-direction: column;
-  font-size: 0.85em;
   gap: 4px;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .service-manual-fields input,
 .service-manual-fields select {
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: white;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
   padding: 6px 8px;
-  border-radius: 4px;
 }
 
-.service-actions {
-  margin-top: 8px;
-}
-
-.monitor-list {
+.control-buttons {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
-.monitor-item {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 0.85em;
+.action-button {
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
-.monitor-item.primary {
-  border-color: #33ff33;
+.start-button { background: var(--success-strong); }
+.stop-button { background: var(--danger-strong); }
+.reset-button { background: var(--accent-strong); }
+.action-button:hover { filter: brightness(1.08); }
+.action-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: none;
 }
 
-/* VNC ports table */
+[hidden] {
+  display: none !important;
+}
+
+.table-wrap {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.dashboard-table,
 .vnc-ports-table {
   width: 100%;
   border-collapse: collapse;
-  font-family: monospace;
-  font-size: 0.9em;
-  max-height: 200px;
-  overflow-y: auto;
+  font-size: 12px;
   table-layout: fixed;
 }
 
-.vnc-ports-table th, 
+.dashboard-table th,
+.dashboard-table td,
+.vnc-ports-table th,
 .vnc-ports-table td {
-  padding: 10px 5px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  text-align: center;
-  word-break: break-word;
+  padding: 7px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+.dashboard-table th,
 .vnc-ports-table th {
-  background-color: rgba(255, 255, 255, 0.1);
-  font-weight: 600;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.vnc-ports-table tr:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+.dashboard-table tr.primary td:first-child {
+  color: var(--success);
+  font-weight: 650;
 }
 
-/* Loading spinner */
-.loading-spinner {
+.mini-button,
+.copy-button {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.update-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.update-status {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.progress-track {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+}
+
+.error-text {
+  color: var(--danger);
+  font-size: 11px;
+}
+
+.loading-spinner,
+.no-ports-message,
+.error-message {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 30px 0;
+  gap: 8px;
+  padding: 16px 8px;
+  text-align: center;
+  color: var(--muted);
 }
 
 .spinner {
-  border: 4px solid rgba(255, 255, 255, 0.3);
+  width: 22px;
+  height: 22px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--accent);
   border-radius: 50%;
-  border-top: 4px solid white;
-  width: 30px;
-  height: 30px;
-  animation: spin 1s linear infinite;
-  margin-bottom: 15px;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  to { transform: rotate(360deg); }
 }
 
-/* Error and warning messages */
-.error-message, .no-ports-message {
-  text-align: center;
-  padding: 20px;
-}
-
-.error-icon, .warning-icon {
-  font-size: 2em;
-  margin-bottom: 10px;
-}
-
-.error-details {
-  font-family: monospace;
-  background-color: rgba(0, 0, 0, 0.2);
-  padding: 10px;
-  border-radius: 5px;
-  margin: 10px 0;
-  text-align: left;
-}
-
-/* Notification system */
-.notification-area {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-width: 350px;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-.notification {
-  background-color: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 12px 15px;
-  border-radius: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  animation: slideIn 0.3s ease-out forwards;
-  border-left: 4px solid #666;
-}
-
-.notification.info {
-  border-left-color: #17a2b8;
-}
-
-.notification.success {
-  border-left-color: #28a745;
-}
-
-.notification.warning {
-  border-left-color: #ffc107;
-}
-
-.notification.error {
-  border-left-color: #dc3545;
-}
-
-.notification-message {
-  flex-grow: 1;
-  margin-right: 10px;
-}
-
-.notification-close {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 1.2em;
-  cursor: pointer;
-  padding: 0 5px;
-}
-
-.notification-close:hover {
-  color: white;
-}
-
-.notification-hiding {
-  animation: slideOut 0.3s ease-in forwards;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes slideOut {
-  from {
-    transform: translateX(0);
-    opacity: 1;
-  }
-  to {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-}
-
-/* Window control styles */
-.window-controls {
-  width: 100%;
-  height: 30px;
-  background-color: #5c0744;
-  -webkit-app-region: drag;
-}
-
-.window-title-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 100%;
-  padding: 0 10px;
-}
-
-.window-title {
-  font-size: 0.9em;
-  color: white;
-}
-
-.window-controls-container {
-  display: flex;
-  -webkit-app-region: no-drag;
-}
-
-.window-control-button {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 14px;
-  width: 30px;
-  height: 30px;
-  margin-left: 5px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.window-control-button:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-#close-button:hover {
-  background-color: #e81123;
-}
-
-/* Footer/Copyright styles */
 .copyright {
-  margin: 20px 5% 10px 5%;
-  width: 90%;
   display: flex;
   align-items: center;
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  overflow: hidden;
+  gap: 10px;
+  padding: 0 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .clt-logo {
-  background-color: white;
-  padding: 5px 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.copyright-desc {
-  padding: 10px 15px;
-  text-align: center;
-  flex-grow: 1;
-  font-size: 0.8em;
-}
-
-/* Add styles for the new Connection Types section */
-
-.connection-types-card {
-  margin-bottom: 20px;
-}
-
-.connection-type-item {
-  display: flex;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.connection-type-item:last-child {
-  border-bottom: none;
-}
-
-.connection-type-label {
-  min-width: 80px;
-  font-weight: bold;
-  color: #b0b0b0;
-}
-
-.connection-types-card .card-content {
-  padding: 10px 15px;
-}
-
-/* Add a subtle highlight effect on hover for connection type values */
-.connection-type-item .copy-value:hover {
-  background-color: rgba(100, 149, 237, 0.2);
+  background: #fff;
   border-radius: 4px;
+  padding: 2px 6px;
+  display: flex;
+  align-items: center;
+}
+
+.clt-logo img {
+  height: 18px;
+}
+
+.notification-area {
+  position: fixed;
+  right: 14px;
+  bottom: 46px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 320px;
+}
+
+.notification {
+  background: #101821;
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: var(--shadow);
+}
+
+.notification.info { border-left-color: var(--accent); }
+.notification.success { border-left-color: var(--success); }
+.notification.warning { border-left-color: var(--warning); }
+.notification.error { border-left-color: var(--danger); }
+
+.notification-close {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
   cursor: pointer;
 }
 
-/* Add styling for connection-specific elements */
-.connection-type-info {
-  margin-top: 10px;
-  padding: 10px;
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
+.notification-hiding {
+  opacity: 0;
+  transform: translateX(12px);
+  transition: all 0.2s ease;
 }
 
-.connection-type-info p {
-  margin: 5px 0;
-  display: flex;
-  justify-content: space-between;
-}
-
-/* Make copy buttons in connection types slightly smaller */
-.connection-type-item .copy-button {
-  font-size: 0.85em;
-  padding: 2px 8px;
-}
-
-/* Show loading animation in connection types section */
-.connection-types-card .loading-spinner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px 0;
-}
-
-/* Add responsive styles for the connection types section */
-@media screen and (max-width: 460px) {
-  .connection-type-item {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .connection-type-label {
-    margin-bottom: 5px;
-  }
-  
-  .connection-type-item .host-info-value-container {
-    width: 100%;
-  }
-}
-
-/* Improved responsive styles */
-@media (max-width: 650px) {
-  /* Base adjustments for small screens */
-  body {
-    font-size: 0.9em;
-  }
-
-  .app-container {
-    padding: 0 10px 10px 10px;
-  }
-
-  /* Header adjustments */
-  .header-section {
-    padding: 10px 0;
-  }
-
-  .header-text h1 {
-    font-size: 1.6em;
-  }
-
-  .subtitle {
-    font-size: 0.9em;
-  }
-
-  /* Card styles adjustments */
-  .card {
-    padding: 10px;
-    margin-bottom: 15px;
-  }
-
-  .card h3 {
-    font-size: 1em;
-    margin-bottom: 10px;
-  }
-
-  /* Host info specific styles */
-  .host-info-container {
-    gap: 5px;
-  }
-
-  .host-info-item {
-    padding: 5px;
-  }
-
-  .host-info-label {
-    width: 60px;
-    font-size: 0.9em;
-  }
-
-  .host-info-value {
-    font-size: 0.85em;
-    padding: 3px 5px;
-    max-width: calc(100% - 70px);
-  }
-
-  .copy-button {
-    padding: 3px 6px;
-    margin-left: 5px;
-    width: 60px;
-    font-size: 0.7em;
-  }
-
-  /* Button adjustments */
-  .control-buttons {
+@media (max-width: 1080px) {
+  .dashboard {
+    grid-template-columns: 1fr 1fr;
     gap: 8px;
+    padding: 8px;
   }
 
-  .action-button {
-    padding: 8px 10px;
-    min-width: 0;
-    width: 30%;
-    font-size: 0.85em;
-  }
-
-  /* Table adjustments */
-  .vnc-ports-table {
-    font-size: 0.75em;
-  }
-
-  .vnc-ports-table th, 
-  .vnc-ports-table td {
-    padding: 5px 3px;
-  }
-
-  .vnc-ports-table th:nth-child(3),
-  .vnc-ports-table td:nth-child(3) {
-    display: none; /* Hide the third column on small screens */
-  }
-
-  /* Setup checkboxes */
-  .settings-row {
-    gap: 5px;
-  }
-
-  .setup {
-    width: 100%;
-    font-size: 0.9em;
-  }
-
-  /* Copyright section */
-  .copyright {
-    margin: 10px 3% 5px 3%;
-    width: 94%;
-  }
-
-  .clt-logo img {
-    height: 40px;
-  }
-
-  .copyright-desc {
-    font-size: 0.7em;
-    padding: 5px;
-  }
-
-  /* Specific styles for 450x660 window */
-  @media (max-width: 460px) and (max-height: 700px) {
-    .copyright {
-      margin-top: 5px;
-    }
-
-    .action-button {
-      padding: 6px 8px;
-    }
-
-    .card-content {
-      padding: 5px 0;
-    }
-
-    .host-info-container {
-      gap: 3px;
-    }
-
-    .host-info-item {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
-    .host-info-label {
-      margin-bottom: 4px;
-      width: 100%;
-    }
-
-    .host-info-value-container {
-      width: 100%;
-    }
-
-    .host-info-value {
-      max-width: calc(100% - 70px);
-    }
-
-    .vnc-ports-table th, 
-    .vnc-ports-table td {
-      padding: 4px 2px;
-      font-size: 0.9em;
-    }
-
-    .vnc-ports-table th:nth-child(4),
-    .vnc-ports-table td:nth-child(4) {
-      display: none; /* Hide the fourth column on very small screens */
-    }
+  .service-manual-fields {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
-/* Add styles for small screen VNC ports table */
+@media (max-width: 900px) {
+  html,
+  body {
+    overflow: auto;
+  }
 
-@media screen and (max-width: 460px) {
-  .vnc-ports-table {
-    font-size: 0.85rem;
+  body {
+    display: block;
+    min-height: 100%;
   }
-  
-  .vnc-ports-table th, 
-  .vnc-ports-table td {
-    padding: 6px 4px;
-    word-break: break-word;
+
+  .dashboard {
+    display: flex;
+    flex-direction: column;
   }
-  
-  .vnc-ports-table th:first-child,
-  .vnc-ports-table td:first-child {
-    width: 10%;
-    min-width: 30px;
-    text-align: center;
+
+  .panel-wide {
+    grid-column: auto;
   }
-  
-  .vnc-ports-table th:nth-child(2),
-  .vnc-ports-table td:nth-child(2) {
-    width: 45%;
-  }
-  
-  .vnc-ports-table th:nth-child(3),
-  .vnc-ports-table td:nth-child(3) {
-    width: 45%;
-  }
-  
-  /* Make text copy indicators more visible */
-  .copy-value {
-    position: relative;
-  }
-  
-  .copy-value:after {
-    content: "tap to copy";
-    position: absolute;
-    top: -12px;
-    right: 0;
-    font-size: 8px;
-    opacity: 0.6;
-    color: #aaddff;
+
+  .meta-grid,
+  .service-manual-fields {
+    grid-template-columns: 1fr;
   }
 }
