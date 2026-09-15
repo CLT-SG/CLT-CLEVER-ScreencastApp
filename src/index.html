@@ -133,6 +133,58 @@
       </div>
     </div>
 
+    <!-- Independent WebRTC audio (does not affect VNC) -->
+    <div class="host-info-card" id="audio-card">
+      <div class="card-header">
+        <h2>Audio</h2>
+        <div class="connection-indicator">
+          <span>Status:</span>
+          <span class="status-dot offline" id="audio-status-dot"></span>
+          <span id="audio-status-label">Disabled</span>
+        </div>
+      </div>
+      <div class="host-info-container">
+        <p class="audio-help">Optional WebRTC audio is independent from VNC screen streaming. Nothing is captured until a remote client connects and a control below is enabled.</p>
+        <div class="audio-controls">
+          <label class="setup">
+            <input type="checkbox" id="audio-system" class="settings-checkbox">
+            <span>System Audio</span>
+          </label>
+          <label class="setup">
+            <input type="checkbox" id="audio-microphone" class="settings-checkbox">
+            <span>Microphone</span>
+          </label>
+          <label class="setup">
+            <input type="checkbox" id="audio-speaker" class="settings-checkbox" checked>
+            <span>Speaker / Output</span>
+          </label>
+          <label class="setup">
+            <input type="checkbox" id="audio-twoway" class="settings-checkbox">
+            <span>Two-way Audio</span>
+          </label>
+        </div>
+        <div class="host-info-row">
+          <div class="host-info-item">
+            <span class="host-info-label">Transport:</span>
+            <span id="audio-transport-label" class="host-info-value">WebRTC / Opus</span>
+          </div>
+        </div>
+        <div class="host-info-row">
+          <div class="host-info-item">
+            <span class="host-info-label">Capture:</span>
+            <span id="audio-capture-label" class="host-info-value">Idle</span>
+          </div>
+        </div>
+        <div class="host-info-row">
+          <div class="host-info-item">
+            <span class="host-info-label">Capabilities:</span>
+            <span id="audio-caps-label" class="host-info-value">Detecting...</span>
+          </div>
+        </div>
+        <div id="audio-error-label" class="audio-error" hidden></div>
+      </div>
+    </div>
+
     <!-- Control Panel -->
     <div class="control-panel">
       <div class="control-buttons">
@@ -177,11 +229,8 @@
               checked>
             <label for="autoshare">Auto share on launch</label>
           </div>
-          <div class="setup">
-            <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="audio" id="audio" checked>
-            <label for="audio">Enable Audio</label>
-          </div>
         </div>
+        <p class="audio-help">Audio enable/disable is in the Audio panel above so VNC sharing is never started by an audio setting.</p>
       </div>
     </div>
 

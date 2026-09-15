@@ -449,6 +449,35 @@ body {
   border-color: #33ff33;
 }
 
+.audio-help {
+  font-size: 0.85em;
+  opacity: 0.85;
+  margin: 8px 0 12px 0;
+}
+
+.audio-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  margin-bottom: 10px;
+}
+
+.audio-error {
+  color: #ffb3b3;
+  font-size: 0.85em;
+  margin-top: 8px;
+}
+
+.status-dot.error,
+.status-dot.unsupported {
+  background-color: #ff3333;
+  box-shadow: 0 0 5px #ff3333;
+}
+
+.status-dot.enabled {
+  background-color: #33ff33;
+}
+
 /* VNC ports table */
 .vnc-ports-table {
   width: 100%;

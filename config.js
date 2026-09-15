@@ -1,7 +1,11 @@
 exports.pcname = "DESKTOP"
 exports.autorestart = 1800000
 exports.autostartup = true
-exports.audio = true
+exports.audio = false
+exports.systemAudio = false
+exports.microphone = false
+exports.speakerOutput = true
+exports.twoWayAudio = false
 exports.autoshare = true
 
 // Window configuration

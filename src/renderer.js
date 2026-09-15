@@ -197,6 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showNotification('Host information detected', 'success');
     refreshServiceConnection();
     refreshMonitors();
+    refreshAudioStatus();
   }).catch(err => {
     console.error('Error getting host information:', err);
     showNotification('Failed to detect host information', 'error');
@@ -292,6 +293,98 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.api.onMonitorsUpdated) {
     window.api.onMonitorsUpdated(renderMonitors);
   }
+
+  const AUDIO_STATES = {
+    disabled: { text: 'Disabled', css: 'offline' },
+    starting: { text: 'Starting', css: 'searching' },
+    enabled: { text: 'Enabled', css: 'ready' },
+    connected: { text: 'Connected', css: 'online' },
+    reconnecting: { text: 'Reconnecting', css: 'reconnecting' },
+    error: { text: 'Error', css: 'offline' },
+    unsupported: { text: 'Unsupported', css: 'offline' }
+  };
+
+  function applyAudioSnapshot(snapshot) {
+    if (!snapshot) return;
+    const state = snapshot.state || 'disabled';
+    const info = AUDIO_STATES[state] || AUDIO_STATES.disabled;
+    const dot = document.getElementById('audio-status-dot');
+    const label = document.getElementById('audio-status-label');
+    const captureLabel = document.getElementById('audio-capture-label');
+    const capsLabel = document.getElementById('audio-caps-label');
+    const errorLabel = document.getElementById('audio-error-label');
+    const systemBox = document.getElementById('audio-system');
+    const micBox = document.getElementById('audio-microphone');
+    const speakerBox = document.getElementById('audio-speaker');
+    const twoWayBox = document.getElementById('audio-twoway');
+    const cfg = snapshot.config || {};
+    if (dot) {
+      dot.className = `status-dot ${info.css}`;
+    }
+    if (label) label.textContent = info.text;
+    if (systemBox && document.activeElement !== systemBox) systemBox.checked = !!cfg.systemAudio;
+    if (micBox && document.activeElement !== micBox) micBox.checked = !!cfg.microphone;
+    if (speakerBox && document.activeElement !== speakerBox) speakerBox.checked = cfg.speakerOutput !== false;
+    if (twoWayBox && document.activeElement !== twoWayBox) twoWayBox.checked = !!cfg.twoWayAudio;
+    if (captureLabel) {
+      const capturing = snapshot.capturing || {};
+      if (!snapshot.clients) {
+        captureLabel.textContent = 'Idle (no remote audio client)';
+      } else {
+        const parts = [];
+        if (capturing.systemAudio) parts.push('system');
+        if (capturing.microphone) parts.push('microphone');
+        captureLabel.textContent = parts.length ? ('Capturing ' + parts.join(' + ')) : 'Waiting for capture';
+      }
+    }
+    if (capsLabel) {
+      const caps = snapshot.capabilities || {};
+      const parts = [
+        caps.system_audio ? 'system audio' : 'no system audio',
+        caps.microphone_capture ? 'microphone' : 'no microphone',
+        caps.microphone_injection ? 'mic injection' : 'no mic injection'
+      ];
+      capsLabel.textContent = parts.join(', ');
+    }
+    if (errorLabel) {
+      if (snapshot.error) {
+        errorLabel.hidden = false;
+        errorLabel.textContent = snapshot.error;
+      } else {
+        errorLabel.hidden = true;
+        errorLabel.textContent = '';
+      }
+    }
+  }
+
+  function refreshAudioStatus() {
+    if (!window.api.getAudioStatus) return;
+    window.api.getAudioStatus().then(applyAudioSnapshot).catch((err) => {
+      console.error('Error reading audio status:', err);
+    });
+  }
+
+  if (window.api.onAudioStatus) {
+    window.api.onAudioStatus(applyAudioSnapshot);
+  }
+
+  function bindAudioToggle(id, key) {
+    const box = document.getElementById(id);
+    if (!box || !window.api.setAudioConfig) return;
+    box.addEventListener('change', () => {
+      window.api.setAudioConfig({ [key]: box.checked }).then((snapshot) => {
+        applyAudioSnapshot(snapshot);
+        showNotification('Audio setting updated (VNC is unchanged)', 'info');
+      }).catch((err) => {
+        console.error(err);
+        showNotification('Failed to update audio setting', 'error');
+      });
+    });
+  }
+  bindAudioToggle('audio-system', 'systemAudio');
+  bindAudioToggle('audio-microphone', 'microphone');
+  bindAudioToggle('audio-speaker', 'speakerOutput');
+  bindAudioToggle('audio-twoway', 'twoWayAudio');
 
   const saveServiceButton = document.getElementById('service-save-button');
   if (saveServiceButton) {

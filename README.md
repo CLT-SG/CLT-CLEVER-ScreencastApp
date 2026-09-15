@@ -7,7 +7,7 @@ CLEVER Screencast KVM is a desktop application built with Electron that provides
 - Multiple connection options: IP address, short hostname for windows, and FQDN (.local) hostname for linux 
 - Automatic detection of available VNC ports (5900-5905)
 - WebSocket-based VNC streaming
-- Audio streaming through WebRTC (optional)
+- Audio streaming through WebRTC (optional, independent from VNC)
 - Auto-restart functionality
 - System tray integration
 - Frameless window design
@@ -38,7 +38,7 @@ The hostname options make it easier to connect within local networks, especially
 The client allows customization of several settings:
 
 - **Auto-startup**: Launch automatically when the computer starts
-- **Audio streaming**: Enable/disable audio streaming functionality
+- **Audio streaming**: Optional WebRTC system audio and microphone (disabled by default)
 - **Auto-restart interval**: Set the frequency to refresh the connection
 
 ## Development
@@ -104,12 +104,13 @@ The application creates a websockify bridge that:
 - `index.js`: Main Electron application logic
 - `preload.js`: Preload script for renderer process
 - `config.js`: Application configuration
-- `audiostream.js`: Audio streaming functionality
+- `audiostream.js`: Legacy audio entry (WebRTC now lives in `lib/audio-*` and `src/audio-engine.js`)
+- `docs/AUDIO.md`: Audio transport, platform limits, and troubleshooting
 
 ## Troubleshooting
 
 - **VNC Connection Issues**: Ensure VNC server is running on the computer. You can download TightVNC from https://www.tightvnc.com/download.php
-- **Audio Not Working**: Verify that audio streaming is enabled in config.js
+- **Audio Not Working**: Audio is off by default. Enable System Audio in the Audio panel and see [docs/AUDIO.md](docs/AUDIO.md).
 - **Auto-startup Issues**: Check system permissions for startup applications
 
 ## Changelog

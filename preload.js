@@ -41,7 +41,11 @@ contextBridge.exposeInMainWorld('api', {
     pcname: config.pcname,
     autorestart: config.autorestart,
     autostartup: config.autostartup,
-    audio: config.audio
+    audio: config.audio,
+    systemAudio: config.systemAudio,
+    microphone: config.microphone,
+    speakerOutput: config.speakerOutput,
+    twoWayAudio: config.twoWayAudio
   },
   
   // Application version (will be set by main process)
@@ -61,6 +65,8 @@ contextBridge.exposeInMainWorld('api', {
   saveServiceConfig: (partial) => ipcRenderer.invoke('save-service-config', partial),
   startServiceDiscovery: () => ipcRenderer.invoke('start-service-discovery'),
   getMonitors: () => ipcRenderer.invoke('get-monitors'),
+  getAudioStatus: () => ipcRenderer.invoke('get-audio-status'),
+  setAudioConfig: (partial) => ipcRenderer.invoke('set-audio-config', partial),
 
   // Tray control
   updateTrayStatus: (status) => ipcRenderer.invoke('update-tray-status', status),
@@ -82,6 +88,12 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('monitors-updated', (_, monitors) => callback(monitors));
     return () => {
       ipcRenderer.removeAllListeners('monitors-updated');
+    };
+  },
+  onAudioStatus: (callback) => {
+    ipcRenderer.on('audio-status', (_, snapshot) => callback(snapshot));
+    return () => {
+      ipcRenderer.removeAllListeners('audio-status');
     };
   },
 })
