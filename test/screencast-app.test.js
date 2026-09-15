@@ -96,4 +96,22 @@ test('registration payload includes monitors and capabilities', () => {
   assert.equal(payload.hostnameLocal, 'CLT-PC-01.local')
   assert.equal(payload.vncPort, 5900)
   assert.equal(payload.wsPort, 8840)
+  assert.equal(payload.wsPath, '/screen0')
+})
+
+test('mdns hostname is reported without doubling .local', () => {
+  const { mdnsHostname } = require('../lib/host-names')
+  assert.equal(mdnsHostname('CLT-27AIO'), 'CLT-27AIO.local')
+  assert.equal(mdnsHostname('CLT-27AIO.local'), 'CLT-27AIO.local')
+  assert.equal(mdnsHostname('192.168.1.100'), '')
+})
+
+test('connection candidates keep registered addresses in order', () => {
+  const { connectionCandidates, preferredHostname, deriveHostnameLocal } = require('../lib/screencast-target')
+  assert.deepEqual(
+    connectionCandidates('CLT-27AIO', 'CLT-27AIO.local', '192.168.1.100'),
+    ['CLT-27AIO', 'CLT-27AIO.local', '192.168.1.100']
+  )
+  assert.equal(preferredHostname('CLT-27AIO', 'CLT-27AIO.local'), 'CLT-27AIO')
+  assert.equal(deriveHostnameLocal('CLT-27AIO', null), null)
 })

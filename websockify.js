@@ -4,6 +4,7 @@ const net = require('net');
 const os = require('os');
 const path = require('path');
 const log = require('electron-log');
+const { mdnsHostname } = require('./lib/host-names');
 
 /**
  * Configure websockify to handle WebSocket connections and forward them to VNC
@@ -17,7 +18,7 @@ function websockify(server, targets) {
   }
 
   const hostname = os.hostname()
-  const hostnameLocal = `${hostname}.local`
+  const hostnameLocal = mdnsHostname(hostname)
   
   log.info(`Starting websockify with hostname: ${hostname} and ${hostnameLocal}`)
   log.info(`Configuring ${targets.length} VNC target${targets.length > 1 ? 's' : ''}`)

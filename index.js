@@ -27,6 +27,7 @@ const moment = require('moment') // Replace date-and-time with moment
 const datelog = moment().format('YYYY-MM-DD')
 const config = require('./config')
 const { ConnectionManager } = require('./lib/connection-manager')
+const { mdnsHostname } = require('./lib/host-names')
 
 // Configure logging
 var log = require('electron-log')
@@ -34,7 +35,7 @@ log.transports.file.file = path.join(logdir, `${datelog}.log`)
 var pingstat
 var ipaddress
 var hostname = os.hostname()
-var hostnameLocal = `${hostname}.local`
+var hostnameLocal = mdnsHostname(hostname)
 
 // Helper function to get host information - both IP and hostnames
 async function getHostInfo() {
