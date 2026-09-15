@@ -76,7 +76,7 @@
     "generateUpdatesFilesForAllChannels": true,
     "win": {
       "target": "nsis",
-      "icon": "src/assets/media/logo.png",
+      "icon": "src/assets/media/icon-512.png",
       "verifyUpdateCodeSignature": false
     },
     "nsis": {
@@ -95,7 +95,7 @@
         "dmg",
         "zip"
       ],
-      "icon": "src/assets/media/logo.png",
+      "icon": "src/assets/media/icon-512.png",
       "category": "public.app-category.utilities",
       "hardenedRuntime": false,
       "gatekeeperAssess": false
@@ -108,7 +108,7 @@
         "AppImage",
         "deb"
       ],
-      "icon": "src/assets/media/logo.png",
+      "icon": "src/assets/media/icon-512.png",
       "category": "AudioVideo",
       "synopsis": "CLEVER Screencast KVM for screen sharing and remote access",
       "desktop": {
