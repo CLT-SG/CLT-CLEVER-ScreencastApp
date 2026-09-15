@@ -74,7 +74,7 @@
           ]
         }
       ],
-      "icon": "src/assets/media/logo.png"
+      "icon": "src/assets/media/icon-512.png"
     },
     "nsis": {
       "oneClick": false,
@@ -98,7 +98,7 @@
           ]
         }
       ],
-      "icon": "src/assets/media/logo.png",
+      "icon": "src/assets/media/icon-512.png",
       "identity": null,
       "hardenedRuntime": false,
       "gatekeeperAssess": false
@@ -108,7 +108,7 @@
         "AppImage",
         "deb"
       ],
-      "icon": "src/assets/media/logo.png",
+      "icon": "src/assets/media/icon-512.png",
       "category": "AudioVideo"
     }
   }

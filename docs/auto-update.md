@@ -130,7 +130,7 @@ npm run win64
 ## Linux Build
 
 - Runner: `ubuntu-latest`
-- Packages: AppImage (auto-update) and deb
+Linux AppImage packaging requires a 256x256 or larger icon. `src/assets/media/icon-512.png` is the tracked builder icon.
 - Updater metadata: `latest-linux.yml`
 
 Local build:
