@@ -195,14 +195,145 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     showNotification('Host information detected', 'success');
-    
-    // Initialize checkbox states from config
-    // Note: we're not explicitly setting the checkbox here since it's already 
-    // set in HTML, but in a full implementation you would want to query the current config
+    refreshServiceConnection();
+    refreshMonitors();
   }).catch(err => {
     console.error('Error getting host information:', err);
     showNotification('Failed to detect host information', 'error');
   });
+
+  function connectionLabel(snapshot) {
+    if (!snapshot) {
+      return { text: 'Disconnected', source: 'Not configured', css: 'offline' };
+    }
+    const stateMap = {
+      searching: 'Searching',
+      connected: 'Connected',
+      disconnected: 'Disconnected',
+      reconnecting: 'Reconnecting'
+    };
+    const sourceMap = {
+      manual: 'Manual Configuration',
+      discovered: 'Automatically Discovered'
+    };
+    return {
+      text: stateMap[snapshot.state] || snapshot.state,
+      source: sourceMap[snapshot.source] || (snapshot.config && snapshot.config.mode === 'manual' ? 'Manual Configuration' : 'Automatic discovery'),
+      css: snapshot.state || 'offline'
+    };
+  }
+
+  function applyServiceSnapshot(snapshot) {
+    const dot = document.getElementById('service-status-dot');
+    const label = document.getElementById('service-status-label');
+    const sourceLabel = document.getElementById('service-source-label');
+    const urlLabel = document.getElementById('service-url-label');
+    const autoRadio = document.getElementById('service-mode-auto');
+    const manualRadio = document.getElementById('service-mode-manual');
+    const hostInput = document.getElementById('service-host');
+    const portInput = document.getElementById('service-port');
+    const protocolInput = document.getElementById('service-protocol');
+    const info = connectionLabel(snapshot);
+
+    if (dot) {
+      dot.className = `status-dot ${info.css === 'connected' ? 'online' : info.css}`;
+    }
+    if (label) label.textContent = info.text;
+    if (sourceLabel) sourceLabel.textContent = info.source;
+    if (urlLabel) urlLabel.textContent = snapshot && snapshot.baseUrl ? snapshot.baseUrl : 'Searching...';
+    if (snapshot && snapshot.config) {
+      if (autoRadio) autoRadio.checked = snapshot.config.mode !== 'manual';
+      if (manualRadio) manualRadio.checked = snapshot.config.mode === 'manual';
+      if (hostInput && document.activeElement !== hostInput) hostInput.value = snapshot.config.host || '';
+      if (portInput && document.activeElement !== portInput) portInput.value = snapshot.config.port || 8000;
+      if (protocolInput && document.activeElement !== protocolInput) protocolInput.value = snapshot.config.protocol || 'http';
+    }
+  }
+
+  function renderMonitors(monitors) {
+    const container = document.getElementById('monitors-info');
+    if (!container) return;
+    if (!monitors || monitors.length === 0) {
+      container.innerHTML = '<p>No monitors detected.</p>';
+      return;
+    }
+    container.innerHTML = `<div class="monitor-list">${monitors.map((monitor, index) => `
+      <div class="monitor-item ${monitor.primary ? 'primary' : ''}">
+        <strong>${monitor.name || ('Monitor ' + (index + 1))}${monitor.primary ? ' (Primary)' : ''}</strong><br>
+        X: ${monitor.x} &nbsp; Y: ${monitor.y}<br>
+        Width: ${monitor.width} &nbsp; Height: ${monitor.height}<br>
+        ${monitor.resolution || ''}
+      </div>
+    `).join('')}</div>`;
+  }
+
+  function refreshServiceConnection() {
+    if (!window.api.getServiceConnection) return;
+    window.api.getServiceConnection().then(applyServiceSnapshot).catch((err) => {
+      console.error('Error reading CLEVER-Service connection:', err);
+    });
+  }
+
+  function refreshMonitors() {
+    if (!window.api.getMonitors) return;
+    window.api.getMonitors().then(renderMonitors).catch((err) => {
+      console.error('Error reading monitors:', err);
+    });
+  }
+
+  if (window.api.onServiceConnection) {
+    window.api.onServiceConnection((snapshot) => {
+      applyServiceSnapshot(snapshot);
+      if (snapshot && snapshot.monitors) {
+        renderMonitors(snapshot.monitors);
+      }
+    });
+  }
+  if (window.api.onMonitorsUpdated) {
+    window.api.onMonitorsUpdated(renderMonitors);
+  }
+
+  const saveServiceButton = document.getElementById('service-save-button');
+  if (saveServiceButton) {
+    saveServiceButton.addEventListener('click', () => {
+      const host = document.getElementById('service-host').value.trim();
+      const port = parseInt(document.getElementById('service-port').value, 10);
+      const protocol = document.getElementById('service-protocol').value;
+      if (!host) {
+        showNotification('Enter a CLEVER-Service hostname or IP address', 'warning');
+        return;
+      }
+      window.api.saveServiceConfig({ mode: 'manual', host, port, protocol }).then((snapshot) => {
+        applyServiceSnapshot(snapshot);
+        showNotification('Manual CLEVER-Service configuration saved', 'success');
+      }).catch((err) => {
+        console.error(err);
+        showNotification('Failed to save server configuration', 'error');
+      });
+    });
+  }
+
+  const searchButton = document.getElementById('service-search-button');
+  if (searchButton) {
+    searchButton.addEventListener('click', () => {
+      window.api.startServiceDiscovery().then((snapshot) => {
+        applyServiceSnapshot(snapshot);
+        showNotification('Searching for CLEVER-Service...', 'info');
+      }).catch((err) => {
+        console.error(err);
+        showNotification('Could not start discovery', 'error');
+      });
+    });
+  }
+
+  const autoRadio = document.getElementById('service-mode-auto');
+  if (autoRadio) {
+    autoRadio.addEventListener('change', () => {
+      if (autoRadio.checked) {
+        window.api.startServiceDiscovery();
+      }
+    });
+  }
 
   // Create a reusable function for warning and error icons using SVG
   function createSVGIcon(type) {
