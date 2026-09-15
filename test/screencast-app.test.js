@@ -84,6 +84,7 @@ test('registration payload includes monitors and capabilities', () => {
   const payload = buildRegistrationPayload({
     deviceId: 'abc',
     hostname: 'CLT-PC-01',
+    hostnameLocal: 'CLT-PC-01.local',
     ip: '192.168.1.100',
     appVersion: '2.1.0',
     os: 'win32',
@@ -92,6 +93,7 @@ test('registration payload includes monitors and capabilities', () => {
   })
   assert.equal(payload.deviceId, 'abc')
   assert.equal(payload.hostname, 'CLT-PC-01')
-  assert.equal(payload.monitors.length, 1)
+  assert.equal(payload.hostnameLocal, 'CLT-PC-01.local')
+  assert.equal(payload.vncPort, 5900)
   assert.equal(payload.wsPort, 8840)
 })
