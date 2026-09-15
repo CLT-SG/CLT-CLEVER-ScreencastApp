@@ -115,6 +115,10 @@ body {
   white-space: nowrap;
 }
 
+.badge[hidden] {
+  display: none !important;
+}
+
 .badge::before {
   content: "";
   width: 7px;
@@ -304,6 +308,10 @@ body {
   align-items: end;
 }
 
+.service-manual-fields[hidden] {
+  display: none !important;
+}
+
 .service-manual-fields label {
   display: flex;
   flex-direction: column;
@@ -351,6 +359,10 @@ body {
   opacity: 0.45;
   cursor: not-allowed;
   filter: none;
+}
+
+[hidden] {
+  display: none !important;
 }
 
 .table-wrap {
