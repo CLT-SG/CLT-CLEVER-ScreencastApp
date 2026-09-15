@@ -71,6 +71,68 @@
       </div>
     </div>
 
+    <!-- CLEVER-Service connection -->
+    <div class="host-info-card" id="service-connection-card">
+      <div class="card-header">
+        <h2>CLEVER-Service</h2>
+        <div class="connection-indicator">
+          <span>Status:</span>
+          <span class="status-dot offline" id="service-status-dot"></span>
+          <span id="service-status-label">Disconnected</span>
+        </div>
+      </div>
+      <div class="host-info-container">
+        <div class="host-info-row">
+          <div class="host-info-item">
+            <span class="host-info-label">Source:</span>
+            <span id="service-source-label" class="host-info-value">Not configured</span>
+          </div>
+        </div>
+        <div class="host-info-row">
+          <div class="host-info-item">
+            <span class="host-info-label">Server:</span>
+            <span id="service-url-label" class="host-info-value">Searching...</span>
+          </div>
+        </div>
+        <div class="settings-row service-config-row">
+          <label class="service-mode">
+            <input type="radio" name="service-mode" value="auto" id="service-mode-auto" checked>
+            Automatic discovery
+          </label>
+          <label class="service-mode">
+            <input type="radio" name="service-mode" value="manual" id="service-mode-manual">
+            Manual configuration
+          </label>
+        </div>
+        <div class="service-manual-fields" id="service-manual-fields">
+          <label>Protocol
+            <select id="service-protocol">
+              <option value="http">http</option>
+              <option value="https">https</option>
+            </select>
+          </label>
+          <label>Host / IP
+            <input type="text" id="service-host" placeholder="hostname or 192.168.1.10">
+          </label>
+          <label>Port
+            <input type="number" id="service-port" min="1" max="65535" value="8000">
+          </label>
+          <button id="service-save-button" class="action-button start-button" type="button">Save</button>
+        </div>
+        <div class="control-buttons service-actions">
+          <button id="service-search-button" class="action-button reset-button" type="button">Search again</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detected monitors -->
+    <div class="vnc-ports-container card">
+      <h3>Monitors</h3>
+      <div id="monitors-info" class="card-content">
+        <p>Detecting displays...</p>
+      </div>
+    </div>
+
     <!-- Control Panel -->
     <div class="control-panel">
       <div class="control-buttons">

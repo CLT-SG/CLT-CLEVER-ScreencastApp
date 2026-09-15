@@ -1,5 +1,4 @@
 exports.pcname = "DESKTOP"
-exports.cleverserver = ["192.168.1.208", "192.168.1.100", "192.168.1.104"]
 exports.autorestart = 1800000
 exports.autostartup = true
 exports.audio = true
@@ -23,8 +22,16 @@ exports.connection = {
 
 // Server configuration
 exports.server = {
-  port: 8840,          // Port for HTTPS server
+  port: 8840,          // Port for HTTPS / websockify server
   scanPorts: ['5900', '5901', '5902', '5903', '5904', '5905'] // VNC ports to scan
+}
+
+// CLEVER-Service discovery defaults. Host/IP are never hardcoded; they
+// come from LAN discovery or from the persisted user configuration.
+exports.cleverService = {
+  discoveryPort: 8842,
+  defaultPort: 8000,
+  defaultProtocol: 'http'
 }
 
 // Appearance settings

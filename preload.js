@@ -36,10 +36,9 @@ contextBridge.exposeInMainWorld('api', {
     parseDate: (dateString, format) => moment(dateString, format)
   },
   
-  // App configuration
+  // App configuration (runtime values come from userData, not hardcoded IPs)
   config: {
     pcname: config.pcname,
-    cleverserver: config.cleverserver,
     autorestart: config.autorestart,
     autostartup: config.autostartup,
     audio: config.audio
@@ -58,6 +57,10 @@ contextBridge.exposeInMainWorld('api', {
   close: () => ipcRenderer.invoke('close-window'),
   openAbout: () => ipcRenderer.invoke('open-about'),
   getHostInfo: () => ipcRenderer.invoke('get-host-info'),
+  getServiceConnection: () => ipcRenderer.invoke('get-service-connection'),
+  saveServiceConfig: (partial) => ipcRenderer.invoke('save-service-config', partial),
+  startServiceDiscovery: () => ipcRenderer.invoke('start-service-discovery'),
+  getMonitors: () => ipcRenderer.invoke('get-monitors'),
 
   // Tray control
   updateTrayStatus: (status) => ipcRenderer.invoke('update-tray-status', status),
@@ -67,6 +70,18 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('tray-action', (_, action) => callback(action));
     return () => {
       ipcRenderer.removeAllListeners('tray-action');
+    };
+  },
+  onServiceConnection: (callback) => {
+    ipcRenderer.on('service-connection', (_, snapshot) => callback(snapshot));
+    return () => {
+      ipcRenderer.removeAllListeners('service-connection');
+    };
+  },
+  onMonitorsUpdated: (callback) => {
+    ipcRenderer.on('monitors-updated', (_, monitors) => callback(monitors));
+    return () => {
+      ipcRenderer.removeAllListeners('monitors-updated');
     };
   },
 })

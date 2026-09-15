@@ -385,6 +385,70 @@ body {
   animation: pulse 2s infinite;
 }
 
+.status-dot.searching,
+.status-dot.reconnecting {
+  background-color: #ffcc33;
+  box-shadow: 0 0 5px #ffcc33;
+  animation: pulse 1s infinite;
+}
+
+.service-config-row {
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.service-mode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9em;
+}
+
+.service-manual-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.service-manual-fields label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85em;
+  gap: 4px;
+}
+
+.service-manual-fields input,
+.service-manual-fields select {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: white;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+
+.service-actions {
+  margin-top: 8px;
+}
+
+.monitor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.monitor-item {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.85em;
+}
+
+.monitor-item.primary {
+  border-color: #33ff33;
+}
+
 /* VNC ports table */
 .vnc-ports-table {
   width: 100%;

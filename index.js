@@ -5,7 +5,8 @@ const {
   globalShortcut,
   ipcMain,
   Menu,
-  Tray
+  Tray,
+  screen
 } = require('electron')
 const isMac = process.platform === 'darwin'
 const path = require('path')
@@ -25,6 +26,8 @@ const now = new Date()
 const moment = require('moment') // Replace date-and-time with moment
 const datelog = moment().format('YYYY-MM-DD')
 const config = require('./config')
+const { ConnectionManager } = require('./lib/connection-manager')
+const { mdnsHostname } = require('./lib/host-names')
 
 // Configure logging
 var log = require('electron-log')
@@ -32,7 +35,7 @@ log.transports.file.file = path.join(logdir, `${datelog}.log`)
 var pingstat
 var ipaddress
 var hostname = os.hostname()
-var hostnameLocal = `${hostname}.local`
+var hostnameLocal = mdnsHostname(hostname)
 
 // Helper function to get host information - both IP and hostnames
 async function getHostInfo() {
@@ -40,6 +43,7 @@ async function getHostInfo() {
     const networkInfo = await si.networkInterfaces('default')
     return {
       ip: networkInfo.ip4,
+      mac: networkInfo.mac,
       hostname: hostname,
       hostnameLocal: hostnameLocal
     }
@@ -47,6 +51,7 @@ async function getHostInfo() {
     log.error(`Error getting host info: ${err}`)
     return {
       ip: '127.0.0.1',
+      mac: null,
       hostname: hostname,
       hostnameLocal: hostnameLocal
     }
@@ -73,6 +78,7 @@ let win = null
 let appIcon = null
 let autoreload
 let isSharing = false // Track sharing state
+let connectionManager = null
 
 const vncport = (process.platform == 'linux') ? '5900' : '5900'
 const screencastAutoLaunch = new AutoLaunch({
@@ -402,6 +408,9 @@ try {
           appIcon.setImage(publishPath)
           appIcon.setToolTip('Screencast & VNC is running')
           updateTrayMenu(true);
+          if (connectionManager) {
+            connectionManager.notifySharing(true)
+          }
           appIcon.displayBalloon({
             title: titlenotif,
             content: 'Screencast & VNC has started sharing',
@@ -411,6 +420,9 @@ try {
           appIcon.setImage(iconPath)
           appIcon.setToolTip('Screencast & VNC is not sharing')
           updateTrayMenu(false);
+          if (connectionManager) {
+            connectionManager.notifySharing(false)
+          }
           appIcon.displayBalloon({
             title: titlenotif,
             content: 'Screencast & VNC has stopped sharing',
@@ -522,6 +534,31 @@ try {
         return await getHostInfo()
       })
 
+      ipcMain.handle('get-service-connection', () => {
+        return connectionManager ? connectionManager.snapshot() : null
+      })
+
+      ipcMain.handle('save-service-config', async (_event, partial) => {
+        if (!connectionManager) {
+          return null
+        }
+        log.info('Manual CLEVER-Service configuration saved')
+        return connectionManager.applyConfig(partial)
+      })
+
+      ipcMain.handle('start-service-discovery', async () => {
+        if (!connectionManager) {
+          return null
+        }
+        log.info('Starting CLEVER-Service automatic discovery')
+        await connectionManager.applyConfig({ mode: 'auto' })
+        return connectionManager.snapshot()
+      })
+
+      ipcMain.handle('get-monitors', () => {
+        return connectionManager ? connectionManager.monitors : []
+      })
+
       // Set tray context menu
       appIcon.setContextMenu(contextMenu)
 
@@ -585,6 +622,12 @@ try {
         log.info('DOM ready event received from renderer process')
       })
 
+      app.on('before-quit', () => {
+        if (connectionManager) {
+          connectionManager.stop()
+        }
+      })
+
       // Check VNC status and open window
       checkVncAndOpenWindow()
     })
@@ -618,7 +661,8 @@ async function checkVncAndOpenWindow() {
       pingstat = false
       log.info(`VNC server found on port ${vncport}, loading application`)
       log.info(`Host information: IP=${hostInfo.ip}, Hostname=${hostInfo.hostname}, Hostname.local=${hostInfo.hostnameLocal}`)
-      
+      startConnectionManager()
+
       // Auto-start sharing if enabled in config
       if (config.autoshare) {
         // Give time for the renderer to initialize
@@ -655,4 +699,34 @@ async function checkVncAndOpenWindow() {
     log.error(`Error in checkVncAndOpenWindow: ${err}`)
     app.exit()
   }
+}
+
+function startConnectionManager() {
+  if (connectionManager) {
+    return
+  }
+  connectionManager = new ConnectionManager({
+    userDataDir: app.getPath('userData'),
+    logger: log,
+    screenApi: screen,
+    getHostInfo,
+    getAppVersion: () => app.getVersion(),
+    getAudioEnabled: () => !!config.audio,
+    getSharing: () => isSharing,
+    wsPort: config.server?.port || 8840,
+    vncPort: parseInt(vncport, 10) || 5900
+  })
+  connectionManager.on('status', (snapshot) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('service-connection', snapshot)
+    }
+  })
+  connectionManager.on('monitors', (monitors) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('monitors-updated', monitors)
+    }
+  })
+  connectionManager.start().catch((err) => {
+    log.error(`CLEVER-Service connection manager failed: ${err}`)
+  })
 }
