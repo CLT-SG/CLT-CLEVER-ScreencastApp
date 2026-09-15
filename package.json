@@ -1,12 +1,13 @@
 {
-  "name": "cleverscreencast",
-  "version": "2.1.0",
-  "description": "CLEVER Screencast KVM for screen sharing and remote access",
+  "name": "clevervncclient",
+  "version": "2.1.1-2026",
+  "description": "Screen monitor as remote devices or casting to video wall with CLEVER- SUpport Windows 10+, Ubuntu Linux 20.04+",
   "main": "index.js",
   "scripts": {
     "start": "electron .",
     "win32": "electron-builder --win --ia32",
     "win64": "electron-builder --win --x64",
+    "win": "electron-builder --win --ia32 --x64",
     "ubuntu32": "electron-builder --linux --ia32",
     "ubuntu64": "electron-builder --linux --x64"
   },
@@ -17,27 +18,27 @@
   },
   "license": "ISC",
   "dependencies": {
-    "async": "^3.2.5",
     "auto-launch": "^5.0.6",
-    "cors": "^2.8.5",
-    "electron-log": "^5.1.2",
-    "express": "^4.19.1",
-    "is-reachable": "^5.2.1",
-    "moment": "^2.30.1",
-    "systeminformation": "^5.22.6",
-    "ws": "^8.15.1"
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.8.9",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "electron": "^22.3.25",
-    "electron-builder": "^24.6.3"
+    "electron-builder": "^26.15.3"
   },
   "build": {
     "appId": "screencast.client.app",
     "productName": "CLEVER_Screencast",
-    "copyright": "Copyright © 2000-2025, Closed-loop. All rights ® reserved",
+    "copyright": "Copyright © 2000-2026, Closed-loop. All rights ® reserved",
     "directories": {
       "output": "build/Release"
     },
+    "files": [
+      "index.js",
+      "lib/**/*",
+      "src/**/*"
+    ],
     "compression": "maximum",
     "win": {
       "target": "nsis",
@@ -50,8 +51,7 @@
     "linux": {
       "target": "deb",
       "icon": "build/icons/clt.png",
-      "category": "AudioVideo",
-      "desktop": "cltsvncapp"
+      "category": "AudioVideo"
     }
   }
 }

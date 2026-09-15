@@ -1,658 +1,360 @@
+'use strict'
+
+const path = require('path')
 const {
   app,
   dialog,
   BrowserWindow,
   globalShortcut,
   ipcMain,
-  Menu,
-  Tray
+  screen
 } = require('electron')
-const isMac = process.platform === 'darwin'
-const path = require('path')
-const fs = require('fs')
-const os = require('os')
-const homedir = os.homedir()
-const si = require('systeminformation')
+const { autoUpdater } = require('electron-updater')
 const AutoLaunch = require('auto-launch')
-const isReachable = require('is-reachable')
-const websockify = require('./websockify')
-const { createServer } = require("https")
-const async = require('async')
-const logdir = path.normalize(homedir + '/clevervnc-log')
-const iconPath = path.join(__dirname, '/src/assets/media/logo.png')
-const publishPath = path.join(__dirname, '/src/assets/media/publish.png')
-const now = new Date()
-const moment = require('moment') // Replace date-and-time with moment
-const datelog = moment().format('YYYY-MM-DD')
-const config = require('./config')
 
-// Configure logging
-var log = require('electron-log')
-log.transports.file.file = path.join(logdir, `${datelog}.log`)
-var pingstat
-var ipaddress
-var hostname = os.hostname()
-var hostnameLocal = `${hostname}.local`
+const log = require('./lib/logger')
+const { Settings } = require('./lib/settings')
+const { CastService } = require('./lib/cast-service')
+const { VncMonitor } = require('./lib/vnc-monitor')
+const { TrayManager } = require('./lib/tray')
 
-// Helper function to get host information - both IP and hostnames
-async function getHostInfo() {
-  try {
-    const networkInfo = await si.networkInterfaces('default')
-    return {
-      ip: networkInfo.ip4,
-      hostname: hostname,
-      hostnameLocal: hostnameLocal
-    }
-  } catch (err) {
-    log.error(`Error getting host info: ${err}`)
-    return {
-      ip: '127.0.0.1',
-      hostname: hostname,
-      hostnameLocal: hostnameLocal
-    }
+const ICON_IDLE = path.join(__dirname, 'src', 'assets', 'media', 'logo.png')
+const ICON_PUBLISH = path.join(__dirname, 'src', 'assets', 'media', 'publish.png')
+const INDEX_PAGE = path.join(__dirname, 'src', 'index.html')
+const PRELOAD = path.join(__dirname, 'src', 'preload.js')
+
+class CleverVncApp {
+  constructor () {
+    this.win = null
+    this.tray = null
+    this.settings = null
+    this.castService = null
+    this.vncMonitor = null
+    this.autoLauncher = null
+    this._cacheTimer = null
+    this._wasCasting = false
+    this._quitting = false
   }
-}
 
-// Websockify settings
-const server = createServer({
-  cert: fs.readFileSync(path.join(__dirname, '/cert/example.com+5.pem')),
-  key: fs.readFileSync(path.join(__dirname, '/cert/example.com+5-key.pem'))
-})
-
-// Create log directory if it doesn't exist
-if (!fs.existsSync(logdir)) {
-  fs.mkdirSync(logdir, { recursive: true }, (err) => {
-    if (err) {
-      log.warn(err)
+  run () {
+    if (!app.requestSingleInstanceLock()) {
+      app.exit()
+      return
     }
-  })
-}
+    app.on('second-instance', () => this.showWindow())
 
-// One instance process check
-let win = null
-let appIcon = null
-let autoreload
-let isSharing = false // Track sharing state
-
-const vncport = (process.platform == 'linux') ? '5900' : '5900'
-const screencastAutoLaunch = new AutoLaunch({
-  name: 'CLEVER Screencast',
-  path: app.getPath('exe'),
-})
-
-// Menu template with updated structure for Electron v22
-const template = [
-  {
-    label: 'Menu',
-    submenu: [
-      {
-        label: 'Auto restart',
-        submenu: [
-          {
-            label: "30 min",
-            type: "radio",
-            checked: config.autorestart == 1800000,
-            click: () => {
-              replaceConfig('autorestart', 'exports.autorestart = 1800000')
-              setupAutoReload(1800000)
-              updateMenu()
-            }
-          },
-          {
-            label: "1 hour",
-            type: "radio",
-            checked: config.autorestart == 3600000,
-            click: () => {
-              replaceConfig('autorestart', 'exports.autorestart = 3600000')
-              setupAutoReload(3600000)
-              updateMenu()
-            }
-          },
-          {
-            label: "3 hour",
-            type: "radio",
-            checked: config.autorestart == 10800000,
-            click: () => {
-              replaceConfig('autorestart', 'exports.autorestart = 10800000')
-              setupAutoReload(10800000)
-              updateMenu()
-            }
-          }
-        ]
-      },
-      {
-        type: 'separator'
-      },
-      {
-        label: 'About',
-        click: async () => {
-          const { shell } = require('electron')
-          await shell.openExternal('https://www.closed-loop.biz/contact.html')
-        }
-      },
-      {
-        label: 'Check for update',
-        click: async () => {
-          dialog.showMessageBox({
-            type: 'info',
-            title: 'Updates',
-            message: 'Checking for updates...',
-            buttons: ['OK']
-          })
-          // In a production app, this would connect to update server
-        }
-      },
-      (isMac ? {
-        role: 'close'
-      } : {
-        label: 'Quit',
-        click: () => {
-          app.isQuiting = true
-          if (appIcon) appIcon.destroy()
-          app.quit()
-        }
-      })
-    ]
-  },
-  {
-    label: 'View',
-    submenu: [
-      { role: 'reload' },
-      { role: 'forceReload' },
-      { type: 'separator' },
-      { role: 'toggleDevTools' },
-      { type: 'separator' },
-      { role: 'resetZoom' },
-      { role: 'zoomIn' },
-      { role: 'zoomOut' },
-      { type: 'separator' },
-      { role: 'togglefullscreen' }
-    ]
-  }
-]
-
-function updateMenu() {
-  const menu = Menu.buildFromTemplate(template)
-  Menu.setApplicationMenu(menu)
-}
-
-// Single instance lock
-const gotTheLock = app.requestSingleInstanceLock()
-
-function setupAutoReload(interval) {
-  if (autoreload) {
-    clearInterval(autoreload)
-  }
-  
-  autoreload = setInterval(() => {
-    if (win) {
-      log.info(`Auto reload triggered (${interval}ms interval)`)
-      win.webContents.session.clearCache()
-    }
-  }, interval)
-}
-
-try {
-  if (!gotTheLock) {
-    app.exit()
-  } else {
-    app.on('second-instance', (event, commandLine, workingDirectory) => {
-      // Someone tried to run a second instance, we should focus our window
-      if (win) {
-        if (win.isMinimized()) {
-          log.info("Restore process.")
-          win.show()
-        }
-        win.focus()
-      }
-    })
-
-    // HTTPS certificate settings
+    // The video wall servers use self-signed certificates.
     app.commandLine.appendSwitch('ignore-certificate-errors', 'true')
-    app.commandLine.appendSwitch("disable-http-cache")
-
-    // Increase memory size
-    const totalRAM = os.totalmem() / (1024 * 1024)
-    app.commandLine.appendSwitch("js-flags", `--max-old-space-size=${Math.trunc(totalRAM)}`)
-
-    // Ignore cert
+    app.commandLine.appendSwitch('disable-http-cache')
     app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
       event.preventDefault()
       callback(true)
     })
 
-    // App crash report to log
-    process.on('uncaughtException', (err) => {
-      log.error('Uncaught exception:', err)
+    app.on('window-all-closed', () => { /* keep running in the tray */ })
+    app.on('before-quit', () => {
+      this._quitting = true
+    })
+    app.on('will-quit', () => {
+      globalShortcut.unregisterAll()
+      if (this.vncMonitor) this.vncMonitor.stop()
+      if (this.castService) this.castService.shutdown()
     })
 
-    // Start HTTP server
-    server.listen(config.server?.port || 8840, () => log.info(`Server listening on ${hostname}:${config.server?.port || 8840}`))
+    app.whenReady().then(() => this._onReady())
+  }
 
-    // App startup config
-    app.whenReady().then(() => {
-      // Create main window
-      win = new BrowserWindow({
-        width: config.window?.width || 1200,
-        height: config.window?.height || 960,
-        minWidth: config.window?.minWidth || 800,
-        minHeight: config.window?.minHeight || 600,
-        icon: iconPath,
-        resizable: config.window?.resizable !== undefined ? config.window.resizable : false,
-        frame: false,
-        webPreferences: {
-          preload: path.join(__dirname, 'preload.js'),
-          contextIsolation: true,
-          nodeIntegration: false,
-          sandbox: false,
-          webSecurity: true
-        }
-      })
-      
-      // Add CSS to hide scrollbars at application level
-      win.webContents.on('did-finish-load', () => {
-        win.webContents.insertCSS(`
-          ::-webkit-scrollbar {
-            display: none !important;
-          }
-          * {
-            -ms-overflow-style: none !important;
-            scrollbar-width: none !important;
-          }
-        `)
-        log.info('Applied CSS to hide scrollbars')
-      })
+  _onReady () {
+    this.settings = new Settings(path.join(app.getPath('userData'), 'settings.json'), log)
+    this.autoLauncher = new AutoLaunch({
+      name: 'CLEVER Screencast & VNC',
+      path: process.execPath
+    })
 
-      // Auto startup settings
-      if (app.isPackaged && config.autostartup) {
-        app.setLoginItemSettings({
-          openAtLogin: true,
-        })
+    this._createWindow()
+    this._createTray()
+    this._createServices()
+    this._registerIpc()
+    this._setupAutoUpdater()
+
+    globalShortcut.register('CommandOrControl+D', () => {
+      if (this.win) this.win.webContents.toggleDevTools()
+    })
+
+    this._scheduleCacheClear(this.settings.get('cacheClearMinutes'))
+    this.castService.startRegistration()
+    this.vncMonitor.start()
+
+    // The app autostarts with the OS; get out of the user's way.
+    setTimeout(() => {
+      if (this.win && !this.win.isDestroyed()) this.win.hide()
+    }, 5000)
+  }
+
+  _createWindow () {
+    this.win = new BrowserWindow({
+      width: 350,
+      height: 460,
+      icon: ICON_IDLE,
+      resizable: false,
+      frame: false,
+      webPreferences: {
+        preload: PRELOAD,
+        contextIsolation: true,
+        nodeIntegration: false,
+        zoomFactor: 1
       }
+    })
+    this.win.loadFile(INDEX_PAGE)
 
-      // Set menu - fixed for Electron v22
-      updateMenu()
-
-      // Create tray icon with enhanced menu
-      appIcon = new Tray(iconPath)
-      const contextMenu = Menu.buildFromTemplate([
-        {
-          label: 'Connection Status',
-          enabled: false,
-        },
-        {
-          type: 'separator'
-        },
-        {
-          label: 'Start Sharing',
-          id: 'start-sharing',
-          click: function () {
-            win.webContents.send('tray-action', 'start');
-          }
-        },
-        {
-          label: 'Stop Sharing',
-          id: 'stop-sharing',
-          enabled: false, // Initially disabled since sharing is off
-          click: function () {
-            win.webContents.send('tray-action', 'stop');
-          }
-        },
-        {
-          type: 'separator'
-        },
-        {
-          label: 'Show Application',
-          click: function () {
-            win.show()
-          }
-        },
-        {
-          label: 'Connection Info',
-          submenu: [
-            {
-              label: `Hostname: ${hostname}`,
-              enabled: false
-            },
-            {
-              label: `FQDN: ${hostnameLocal}`,
-              enabled: false
-            }
-          ]
-        },
-        {
-          type: 'separator'
-        },
-        {
-          label: 'Settings',
-          submenu: [
-            {
-              label: 'Auto Startup',
-              type: 'checkbox',
-              checked: config.autostartup,
-              click: (item) => {
-                replaceConfig('autostartup', `exports.autostartup = ${item.checked}`);
-                if (item.checked) {
-                  screencastAutoLaunch.enable();
-                } else {
-                  screencastAutoLaunch.disable();
-                }
-              }
-            },
-            {
-              label: 'Auto Share on Launch',
-              type: 'checkbox',
-              checked: config.autoshare,
-              click: (item) => {
-                replaceConfig('autoshare', `exports.autoshare = ${item.checked}`);
-              }
-            },
-            {
-              label: 'Enable Audio',
-              type: 'checkbox',
-              checked: config.audio,
-              click: (item) => {
-                replaceConfig('audio', `exports.audio = ${item.checked}`);
-              }
-            }
-          ]
-        },
-        {
-          label: 'About',
-          click: async () => {
-            const { shell } = require('electron')
-            await shell.openExternal('https://www.closed-loop.biz/contact.html')
-          }
-        },
-        {
-          type: 'separator'
-        },
-        {
-          label: 'Quit',
-          click: function () {
-            app.isQuiting = true
-            appIcon.destroy()
-            app.quit()
-          }
-        }
-      ])
-
-      // Update the first menu item to show connection status
-      function updateTrayMenu(status) {
-        const statusLabel = status ? 'Connected' : 'Disconnected';
-        contextMenu.items[0].label = `Status: ${statusLabel}`;
-        
-        // Update button enabled states based on status
-        contextMenu.items[2].enabled = !status; // Start Sharing
-        contextMenu.items[3].enabled = status;  // Stop Sharing
-        
-        isSharing = status; // Update sharing state
-        appIcon.setContextMenu(contextMenu);
-      }
-
-      // Add a new IPC handler for updating the tray menu status
-      ipcMain.handle('update-tray-status', (event, status) => {
-        updateTrayMenu(status);
-      });
-
-      // Update tray icon with tooltip and balloon notification
-      ipcMain.handle('tray-icon', async (event, trayimg) => {
-        const titlenotif = "Video Wall Screencast & VNC Notification"
-        if (trayimg === 'publish') {
-          appIcon.setImage(publishPath)
-          appIcon.setToolTip('Screencast & VNC is running')
-          updateTrayMenu(true);
-          appIcon.displayBalloon({
-            title: titlenotif,
-            content: 'Screencast & VNC has started sharing',
-            iconType: 'info'
-          })
-        } else if (trayimg === 'stopped') {
-          appIcon.setImage(iconPath)
-          appIcon.setToolTip('Screencast & VNC is not sharing')
-          updateTrayMenu(false);
-          appIcon.displayBalloon({
-            title: titlenotif,
-            content: 'Screencast & VNC has stopped sharing',
-            iconType: 'warning'
-          })
-        }
-      })
-
-      // New IPC handlers for window controls
-      ipcMain.handle('minimize-window', () => {
-        win.minimize()
-      })
-      
-      ipcMain.handle('maximize-window', () => {
-        if (win.isMaximized()) {
-          win.unmaximize()
-        } else {
-          win.maximize()
-        }
-      })
-      
-      ipcMain.handle('close-window', () => {
-        win.hide()
-      })
-      
-      ipcMain.handle('open-about', async () => {
-        const { shell } = require('electron')
-        await shell.openExternal('https://www.closed-loop.biz/contact.html')
-      })
-
-      // IPC Handlers
-      // Get app version
-      ipcMain.handle('get-app-version', () => {
-        return app.getVersion()
-      })
-
-      // Reload page
-      ipcMain.handle('reload', async () => {
-        win.webContents.reloadIgnoringCache()
-      })
-
-      // Restart app
-      ipcMain.handle('restartapp', async () => {
-        app.relaunch()
-        appIcon.destroy()
-        app.exit()
-      })
-
-      // Save config
-      ipcMain.handle('save-config', async (event, search, replace, checked) => {
-        replaceConfig(search, replace)
-        if (search === 'autostartup') {
-          if (checked) {
-            screencastAutoLaunch.enable()
-          } else {
-            screencastAutoLaunch.disable()
-          }
-        }
-      })
-
-      // Scan and set up VNC ports
-      ipcMain.handle('port-extended', async () => {
-        log.info('Scanning VNC ports')
-        const ports = config.server?.scanPorts || ['5900', '5901', '5902', '5903', '5904', '5905']
-        const availablePorts = []
-        
-        try {
-          await new Promise((resolve) => {
-            async.eachSeries(ports, (port, callback) => {
-              isReachable(`127.0.0.1:${port}`, { timeout: 10000 })
-                .then(status => {
-                  if (status) {
-                    log.info(`VNC port ${port} is available`)
-                    const screenPath = `/screen${port.substring(3, 4)}`
-                    // Add both hostname formats for each port
-                    availablePorts.push({
-                      target: `${ipaddress}:${port}`,
-                      path: screenPath,
-                      hostname: hostname,
-                      hostnameLocal: hostnameLocal,
-                      port: port
-                    })
-                  }
-                  callback() // Properly call the callback function
-                })
-                .catch(err => {
-                  log.error(`Error checking port ${port}: ${err}`)
-                  callback() // Make sure to call callback even on error
-                })
-            }, () => {
-              if (availablePorts.length > 0) {
-                log.info(`Available ports: ${availablePorts.map(p => p.target).join(', ')}`)
-                websockify(server, availablePorts)
-              } else {
-                log.warn('No VNC ports available')
-              }
-              resolve()
-            })
-          })
-        } catch (err) {
-          log.error(`Error in port scanning: ${err}`)
-        }
-        
-        return availablePorts
-      })
-
-      // Return host information
-      ipcMain.handle('get-host-info', async () => {
-        return await getHostInfo()
-      })
-
-      // Set tray context menu
-      appIcon.setContextMenu(contextMenu)
-
-      // Fix double-click behavior to properly show window
-      appIcon.on('double-click', () => {
-        if (!win.isVisible()) {
-          win.show()
-          win.focus()
-        } else {
-          win.hide()
-        }
-      })
-
-      // Set up auto reload based on config
-      setupAutoReload(config.autorestart)
-
-      // Window events
-      win.on('close', (event) => {
-        if (!app.isQuiting) {
-          event.preventDefault()
-          win.hide()
-          return false
-        }
-        return true
-      })
-      
-      win.on('minimize', (event) => {
+    this.win.on('minimize', (event) => {
+      event.preventDefault()
+      this.win.hide()
+    })
+    this.win.on('close', (event) => {
+      if (!this._quitting) {
         event.preventDefault()
-        win.hide()
-      })
-
-      // Track window visibility for tray double-click handler
-      win.on('hide', () => {
-        log.info('Window hidden')
-      })
-
-      win.on('show', () => {
-        log.info('Window shown')
-        win.focus() // Ensure window is focused when shown
-      })
-
-      // Auto hide after configured time (or 5 seconds by default)
-      if (config.appearance?.showSplash !== false) {
-        setTimeout(() => {
-          win.hide()
-        }, config.appearance?.splashDuration || 5000)
+        this.win.hide()
       }
-
-      // Register dev tools shortcut
-      globalShortcut.register('CommandOrControl+D', () => {
-        win.webContents.openDevTools()
-      })
-
-      // Clear cache on startup
-      win.webContents.session.clearCache().then(() => {
-        log.info("Cache cleared on startup")
-      })
-
-      // Listen for DOM ready from renderer
-      ipcMain.on('dom-ready', () => {
-        log.info('DOM ready event received from renderer process')
-      })
-
-      // Check VNC status and open window
-      checkVncAndOpenWindow()
+    })
+    this.win.on('closed', () => {
+      this.win = null
     })
   }
-} catch (ex) {
-  log.error(ex)
-}
 
-// Helper functions
-function replaceConfig(search, replace) {
-  try {
-    const configPath = path.join(__dirname, 'config.js')
-    const data = fs.readFileSync(configPath, 'utf8')
-    const re = new RegExp(`^.*${search}.*$`, 'gm')
-    const formatted = data.replace(re, replace)
-    fs.writeFileSync(configPath, formatted, 'utf8')
-    log.info(`Config updated: ${search} = ${replace}`)
-  } catch (err) {
-    log.error(`Error updating config: ${err}`)
+  _createTray () {
+    this.tray = new TrayManager({
+      idleIcon: ICON_IDLE,
+      publishIcon: ICON_PUBLISH,
+      settings: this.settings,
+      actions: {
+        onShow: () => this.showWindow(),
+        onQuit: () => {
+          this._quitting = true
+          app.quit()
+        },
+        onCheckUpdate: () => this._checkForUpdates(true),
+        onSetCacheInterval: (minutes) => {
+          this.settings.set('cacheClearMinutes', minutes)
+          this._scheduleCacheClear(minutes)
+        }
+      }
+    })
   }
-}
 
-async function checkVncAndOpenWindow() {
-  try {
-    const timeout = config.connection?.timeout || 10000
-    const status = await isReachable(`127.0.0.1:${vncport}`, { timeout })
-    if (status) {
-      const hostInfo = await getHostInfo()
-      ipaddress = hostInfo.ip
-      win.loadFile(path.join(__dirname, 'src', 'index.html'))
-      pingstat = false
-      log.info(`VNC server found on port ${vncport}, loading application`)
-      log.info(`Host information: IP=${hostInfo.ip}, Hostname=${hostInfo.hostname}, Hostname.local=${hostInfo.hostnameLocal}`)
-      
-      // Auto-start sharing if enabled in config
-      if (config.autoshare) {
-        // Give time for the renderer to initialize
-        setTimeout(() => {
-          log.info('Auto-starting sharing based on config setting')
-          win.webContents.send('tray-action', 'start')
-        }, 3000)
+  // Connected monitors in VNC framebuffer coordinates: physical pixels,
+  // origin at the top-left of the virtual desktop (matching how VNC
+  // servers expose a multi-monitor desktop as one framebuffer).
+  _getMonitors () {
+    const primaryId = screen.getPrimaryDisplay().id
+    const monitors = screen.getAllDisplays().map((display, i) => {
+      let bounds = display.bounds
+      if (typeof screen.dipToScreenRect === 'function') {
+        // Windows: exact DIP -> physical pixel conversion
+        try {
+          bounds = screen.dipToScreenRect(null, display.bounds)
+        } catch (err) {
+          bounds = display.bounds
+        }
       }
-    } else {
-      win.hide()
-      const options = {
-        type: 'info',
-        buttons: ['Ok'],
-        defaultId: 0,
-        title: 'ERROR - 2',
-        message: 'Cannot find VNC Server on this computer.',
-        detail: 'Make sure VNC Server is running. You can download at this website https://www.tightvnc.com/download.php\r\n' +
-          '\r\n\r\n' +
-          `Copyright © 2000-${moment().format('YYYY')} by Closed-loop Technology Pte Ltd. All rights reserved \r\n` +
-          ' www.closed-loop.biz'
+      if (bounds === display.bounds && display.scaleFactor && display.scaleFactor !== 1) {
+        bounds = {
+          x: Math.round(display.bounds.x * display.scaleFactor),
+          y: Math.round(display.bounds.y * display.scaleFactor),
+          width: Math.round(display.bounds.width * display.scaleFactor),
+          height: Math.round(display.bounds.height * display.scaleFactor)
+        }
       }
-      
-      dialog.showMessageBox(null, options)
-        .then(({response}) => {
-          if (response === 0) {
-            app.exit()
-          }
-        })
-      
-      log.warn('VNC is not installed on this PC.')
-      pingstat = true
+      return {
+        label: display.label || 'Display ' + (i + 1),
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+        primary: display.id === primaryId
+      }
+    })
+    // Shift so the top-left monitor sits at (0,0) like the VNC framebuffer
+    const minX = Math.min(...monitors.map((m) => m.x))
+    const minY = Math.min(...monitors.map((m) => m.y))
+    for (const m of monitors) {
+      m.x -= minX
+      m.y -= minY
     }
-  } catch (err) {
-    log.error(`Error in checkVncAndOpenWindow: ${err}`)
-    app.exit()
+    return monitors
+  }
+
+  _createServices () {
+    this.castService = new CastService({
+      settings: this.settings,
+      logger: log,
+      getMonitors: () => this._getMonitors()
+    })
+
+    // Re-announce the device when the monitor layout changes so CLEVER
+    // Web always has the current geometry.
+    const reRegister = () => this.castService.registerNow()
+    screen.on('display-added', reRegister)
+    screen.on('display-removed', reRegister)
+    screen.on('display-metrics-changed', reRegister)
+
+    this.castService.on('state', () => {
+      const casting = this.castService.casting
+      if (casting !== this._wasCasting) {
+        this._wasCasting = casting
+        this.tray.setCasting(casting)
+      }
+      this.broadcastState()
+    })
+
+    this.vncMonitor = new VncMonitor({
+      port: this.settings.get('vncPort'),
+      logger: log
+    })
+    this.vncMonitor.on('status', () => this.broadcastState())
+    this.vncMonitor.on('reachable', () => {
+      log.info('VNC server detected, client ready.')
+      if (this.settings.get('autoConnect')) {
+        this.castService.startCast()
+      }
+    })
+    this.vncMonitor.on('attempts-exhausted', () => this._showVncDialog())
+  }
+
+  _registerIpc () {
+    ipcMain.handle('app:get-state', () => this.getState())
+    ipcMain.handle('cast:start', async () => {
+      await this.castService.startCast()
+      return this.getState()
+    })
+    ipcMain.handle('cast:stop', () => {
+      this.castService.stopCast()
+      return this.getState()
+    })
+    ipcMain.handle('cast:restart', async () => {
+      await this.castService.restartCast()
+      return this.getState()
+    })
+    ipcMain.handle('settings:set', async (event, key, value) => {
+      this.settings.set(key, value)
+      if (key === 'startOnBoot') {
+        await this._applyStartOnBoot(value)
+      }
+      return this.getState()
+    })
+    ipcMain.on('window:hide', () => {
+      if (this.win) this.win.hide()
+    })
+    ipcMain.on('update:install', () => {
+      this._quitting = true
+      autoUpdater.quitAndInstall()
+    })
+  }
+
+  async _applyStartOnBoot (enabled) {
+    if (!app.isPackaged) {
+      log.info('start-on-boot skipped (development build)')
+      return
+    }
+    try {
+      if (enabled) {
+        await this.autoLauncher.enable()
+      } else {
+        await this.autoLauncher.disable()
+      }
+      log.info('start-on-boot ' + (enabled ? 'enabled' : 'disabled'))
+    } catch (err) {
+      log.warn('start-on-boot change failed: ' + err.message)
+    }
+  }
+
+  _setupAutoUpdater () {
+    autoUpdater.logger = log
+    autoUpdater.on('update-available', () => this._sendToWindow('update', { status: 'available' }))
+    autoUpdater.on('update-downloaded', () => this._sendToWindow('update', { status: 'downloaded' }))
+    autoUpdater.on('error', (err) => log.warn('auto-update error: ' + err.message))
+    this._checkForUpdates(false)
+  }
+
+  _checkForUpdates (interactive) {
+    if (!app.isPackaged) {
+      if (interactive) {
+        dialog.showMessageBox(this.win, {
+          type: 'info',
+          message: 'Updates are only available in the installed application.'
+        })
+      }
+      return
+    }
+    autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+      log.warn('update check failed: ' + err.message)
+    })
+  }
+
+  _scheduleCacheClear (minutes) {
+    if (this._cacheTimer) {
+      clearInterval(this._cacheTimer)
+    }
+    this._cacheTimer = setInterval(() => {
+      if (this.win) {
+        this.win.webContents.session.clearCache()
+        log.info('session cache cleared (every ' + minutes + ' min)')
+      }
+    }, minutes * 60 * 1000)
+  }
+
+  _showVncDialog () {
+    const year = new Date().getFullYear()
+    dialog.showMessageBox(this.win, {
+      type: 'info',
+      buttons: ['Keep waiting', 'Exit'],
+      defaultId: 0,
+      title: 'VNC Server not found',
+      message: 'Cannot find VNC Server on this computer yet.',
+      detail: 'Make sure VNC Server is running. You can download it at ' +
+        'https://www.tightvnc.com/download.php\r\n' +
+        'The app will keep checking in the background and start automatically ' +
+        'once the VNC Server is available.\r\n\r\n' +
+        'Copyright © 2000-' + year + ' by Closed-loop Technology Pte Ltd. ' +
+        'All rights reserved\r\nwww.closed-loop.biz'
+    }).then(({ response }) => {
+      if (response === 1) {
+        this._quitting = true
+        app.exit()
+      }
+    })
+  }
+
+  getState () {
+    return {
+      version: app.getVersion(),
+      hostname: this.castService.hostname,
+      ipAddress: this.castService.ipAddress || null,
+      vncReachable: this.vncMonitor.reachable,
+      casting: this.castService.casting,
+      viewers: this.castService.viewers,
+      castError: this.castService.lastError,
+      settings: this.settings.all
+    }
+  }
+
+  broadcastState () {
+    this._sendToWindow('state', this.getState())
+  }
+
+  showWindow () {
+    if (this.win) {
+      this.win.show()
+      this.win.focus()
+    }
+  }
+
+  _sendToWindow (channel, payload) {
+    if (this.win && !this.win.isDestroyed()) {
+      this.win.webContents.send(channel, payload)
+    }
   }
 }
+
+log.errorHandler.startCatching()
+new CleverVncApp().run()

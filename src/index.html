@@ -2,139 +2,84 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>CLEVER KVM App</title>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; font-src 'self'">
+  <title>CLEVER - ScreenCast & VNC</title>
   <link rel="stylesheet" href="assets/css/style.css">
-  <link rel="stylesheet" href="assets/css/fontawesome.min.css">
 </head>
 
 <body>
-  <div class="window-controls">
-    <div class="window-title-bar">
-      <div class="window-title">CLEVER KVM ver <span id="app-version"></span></div>
-      <div class="window-controls-container">
-        <button id="close-button" class="window-control-button" title="Close">
-          <span class="window-control-icon">&#10005;</span>
-        </button>
-      </div>
-    </div>
-  </div>
+  <header class="titlebar">
+    <span class="titlebar-title">CLEVER &mdash; ScreenCast &amp; VNC</span>
+    <button id="titlebar-minimize" class="titlebar-button" title="Minimize to tray">&#x2212;</button>
+    <button id="titlebar-close" class="titlebar-button" title="Hide to tray">&#x2715;</button>
+  </header>
 
-  <div class="app-container">
-    <div class="header-section">
-      <div class="header-text">
-        <h1>CLEVER KVM</h1>
-        <p class="subtitle">Screencast & Desktop Sharing</p>
-      </div>
-    </div>
-    
-    <!-- Connection Information -->
-    <div class="host-info-card">
-      <div class="card-header">
-        <h2>Connection Info</h2>
-        <div class="connection-indicator">
-          <span>Status:</span>
-          <span class="status-dot offline" id="status-indicator"></span>
-        </div>
-      </div>
-      
-      <div class="host-info-container">
-        <div class="host-info-row">
-          <div class="host-info-item">
-            <span class="host-info-label">IP:</span>
-            <div class="host-info-value-container">
-              <span id="ip-address" class="host-info-value copy-value" title="Click to copy">Checking...</span>
-              <button class="copy-button" data-target="ip-address">Copy</button>
-            </div>
-          </div>
-        </div>
-        <div class="host-info-row">
-          <div class="host-info-item">
-            <span class="host-info-label">Host:</span>
-            <div class="host-info-value-container">
-              <span id="hostname" class="host-info-value copy-value" title="Click to copy">Checking...</span>
-              <button class="copy-button" data-target="hostname">Copy</button>
-            </div>
-          </div>
-        </div>
-        <div class="host-info-row">
-          <div class="host-info-item">
-            <span class="host-info-label">FQDN:</span>
-            <div class="host-info-value-container">
-              <span id="hostname-local" class="host-info-value copy-value" title="Click to copy">Checking...</span>
-              <button class="copy-button" data-target="hostname-local">Copy</button>
-            </div>
-          </div>
-        </div>
-      </div>
+  <main class="content">
+    <div class="brand">
+      <div class="brand-name">CLEVER</div>
+      <div class="brand-sub">ScreenCast &amp; VNC</div>
     </div>
 
-    <!-- Control Panel -->
-    <div class="control-panel">
-      <div class="control-buttons">
-        <button id="start-button" class="action-button start-button">
-          <span class="button-icon">▶</span>
-          <span class="button-text">Start</span>
-        </button>
-        <button id="stop-button" class="action-button stop-button">
-          <span class="button-icon">■</span>
-          <span class="button-text">Stop</span>
-        </button>
-        <button id="restart-button" class="action-button reset-button">
-          <span class="button-icon">↻</span>
-          <span class="button-text">Restart</span>
-        </button>
+    <section class="card" aria-label="Status">
+      <div class="status-row">
+        <span class="label">VNC Server</span>
+        <span id="vnc-status" class="value badge">Checking&hellip;</span>
       </div>
-    </div>
-    
-    <!-- Available VNC Connections -->
-    <div class="vnc-ports-container card">
-      <h3>Available VNC Connections</h3>
-      <div id="vnc-ports-info" class="card-content">
-        <div class="loading-spinner">
-          <div class="spinner"></div>
-          <p>Scanning for VNC ports...</p>
-        </div>
+      <div class="status-row">
+        <span class="label">Casting</span>
+        <span id="cast-status" class="value badge">Stopped</span>
       </div>
+      <div class="status-row">
+        <span class="label">Viewers</span>
+        <span id="viewers" class="value">0</span>
+      </div>
+      <div class="status-row">
+        <span class="label">Device</span>
+        <span id="hostname" class="value">&mdash;</span>
+      </div>
+      <div class="status-row">
+        <span class="label">IP Address</span>
+        <span id="ip-address" class="value">&mdash;</span>
+      </div>
+      <div id="cast-error" class="error-text"></div>
+    </section>
+
+    <section class="card" aria-label="Options">
+      <div class="option-row">
+        <span>Auto connect</span>
+        <label class="switch">
+          <input type="checkbox" id="auto-connect">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="option-row">
+        <span>Start ScreenCast on start-up</span>
+        <label class="switch">
+          <input type="checkbox" id="start-on-boot">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </section>
+
+    <div class="button-row">
+      <button id="restart-cast" class="action" disabled>Restart</button>
+      <button id="stop-cast" class="action" disabled>Stop</button>
+      <button id="start-cast" class="action">Connect</button>
     </div>
 
-    <!-- Settings -->
-    <div class="settings-panel card">
-      <h3>Settings</h3>
-      <div class="card-content">
-        <div class="settings-row">
-          <div class="setup">
-            <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="autostartup" id="autostartup"
-              checked>
-            <label for="autostartup">Auto startup on PC boot</label>
-          </div>
-          <div class="setup">
-            <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="autoshare" id="autoshare"
-              checked>
-            <label for="autoshare">Auto share on launch</label>
-          </div>
-          <div class="setup">
-            <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="audio" id="audio" checked>
-            <label for="audio">Enable Audio</label>
-          </div>
-        </div>
-      </div>
-    </div>
+    <footer class="footer">
+      <img src="assets/images/logo.png" class="clt-logo" alt="Closed-loop Technology">
+      <div id="copyright" class="copyright-desc">Copyright &copy; Closed-loop. All rights reserved.</div>
+    </footer>
+  </main>
 
-    <div class="notification-area" id="notification-area">
-      <!-- Notifications will appear here -->
-    </div>
-  </div>
-
-  <div class="copyright">
-    <div class="clt-logo">
-      <img src="assets/media/logo.png" alt="Company Logo" style="height: 40px;">
-    </div>
-    <div class="copyright-desc">
-      © 2000-<span id="current-year"></span> Closed-loop Technology<br>
-      All rights reserved.
+  <div id="notification" class="hidden">
+    <p id="notification-message"></p>
+    <div class="notification-buttons">
+      <button id="notification-close">Close</button>
+      <button id="notification-restart" class="hidden">Restart</button>
     </div>
   </div>
 
