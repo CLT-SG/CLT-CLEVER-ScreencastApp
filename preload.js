@@ -58,6 +58,19 @@ contextBridge.exposeInMainWorld('api', {
   close: () => ipcRenderer.invoke('close-window'),
   openAbout: () => ipcRenderer.invoke('open-about'),
   getHostInfo: () => ipcRenderer.invoke('get-host-info'),
+  getSystemInfo: () => ipcRenderer.invoke('get-system-info'),
+  checkCleverServers: () => ipcRenderer.invoke('check-clever-servers'),
+  getAppSettings: () => ipcRenderer.invoke('get-app-settings'),
+  checkForUpdates: () => ipcRenderer.invoke('updater-check'),
+  downloadUpdate: () => ipcRenderer.invoke('updater-download'),
+  installUpdate: () => ipcRenderer.invoke('updater-install'),
+  getUpdateStatus: () => ipcRenderer.invoke('updater-status'),
+  onUpdateStatus: (callback) => {
+    ipcRenderer.on('update-status', (_, status) => callback(status))
+    return () => {
+      ipcRenderer.removeAllListeners('update-status')
+    }
+  },
 
   // Tray control
   updateTrayStatus: (status) => ipcRenderer.invoke('update-tray-status', status),

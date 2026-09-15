@@ -5,6 +5,19 @@ All notable changes to the CLEVER Screencast KVM will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-09-15
+
+### Added
+- Electron Updater with GitHub Releases as the update source
+- GitHub Actions release workflow for Windows, Linux, and macOS
+- Dashboard UI with application status, CLEVER-Service connection, device, monitor, VNC, update, and management controls
+- Session-safe update install that waits until Screencast/VNC sharing has stopped
+
+### Changed
+- Main window is a landscape management dashboard instead of a stacked portrait panel
+- Linux packages now include AppImage (auto-update) in addition to deb
+- macOS publishes zip artifacts required by electron-updater
+
 ## [2.1.0] - 2023-11-14
 
 ### Added

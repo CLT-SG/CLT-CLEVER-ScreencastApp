@@ -1,16 +1,35 @@
-# CLEVER Screencast KVM
+# CLEVER ScreencastApp
 
-CLEVER Screencast KVM is a desktop application built with Electron that provides Screencast KVM functionality with both IP-based and hostname-based connections.
+CLEVER ScreencastApp is an Electron desktop application for Screencast KVM: local VNC discovery, Websockify bridging, optional audio, and registration with CLEVER-Service.
 
-## Features
+## Dashboard
 
-- Multiple connection options: IP address, short hostname for windows, and FQDN (.local) hostname for linux 
-- Automatic detection of available VNC ports (5900-5905)
-- WebSocket-based VNC streaming
-- Audio streaming through WebRTC (optional)
-- Auto-restart functionality
-- System tray integration
-- Frameless window design
+The main window is a management dashboard. It keeps status, connection, monitor, VNC, update, and control information visible without extra pages:
+
+- Application status and sharing state
+- CLEVER-Service host reachability
+- Device IP, hostname, and FQDN
+- Attached monitor information
+- Detected VNC endpoints (ports 5900-5905)
+- GitHub Release update status
+- Start / Stop / Restart and startup settings
+
+Discovery, registration, monitor detection, VNC/Websockify, and Screencast-VNC behavior are unchanged.
+
+## Auto Update
+
+Packaged builds check GitHub Releases for this repository through electron-updater. The dashboard shows:
+
+```text
+Checking for updates...
+You are using the latest version.
+Update available: v1.2.0
+Downloading update...
+Update downloaded.
+Restart to install.
+```
+
+Updates do not restart an active Screencast/VNC session. See [docs/auto-update.md](docs/auto-update.md) for configuration, GitHub Actions, versioning, platform packages, and troubleshooting.
 
 ## Connection Options
 
@@ -20,111 +39,76 @@ The application supports multiple ways to connect to the VNC server:
 2. **Short Hostname**: Connect using just the computer name (e.g., `USER-PC:5900`)
 3. **FQDN Hostname**: Connect using hostname.local format (e.g., `USER-PC.local:5900`)
 
-The hostname options make it easier to connect within local networks, especially with DHCP where IP addresses may change.
-
 ## System Requirements
 
-- Operating System: Windows 10 or later, macOS 10.14+, or modern Linux distributions
-- VNC server installed and running (e.g., TightVNC, UltraVNC, RealVNC)
+- Windows 10 or later, macOS 10.14+, or a modern Linux distribution
+- A VNC server installed and running (for example TightVNC, UltraVNC, or RealVNC)
 
 ## Installation
 
-1. Download the latest release for your platform from the releases page
-2. Run the installer and follow the prompts
-3. Launch CLEVER Screencast KVM from the Start Menu or Applications folder
+Download the latest Windows, Linux, or macOS package from GitHub Releases and run the installer.
 
 ## Configuration
 
-The client allows customization of several settings:
+`config.js` stores:
 
-- **Auto-startup**: Launch automatically when the computer starts
-- **Audio streaming**: Enable/disable audio streaming functionality
-- **Auto-restart interval**: Set the frequency to refresh the connection
+- **cleverserver**: CLEVER-Service hosts shown on the dashboard
+- **Auto-startup**: Launch when the computer starts
+- **Auto share**: Start sharing after launch
+- **Audio streaming**: Enable or disable audio
+- **Window size**: Dashboard window defaults
 
 ## Development
 
-### Setup
-
 ```bash
-# Clone the repository
-git clone https://github.com/closed-loop/clever-vncclient.git
-
-# Navigate into the project directory
-cd clever-vncclient
-
-# Install dependencies
+git clone https://github.com/clt-sg/clt-clever-screencastapp.git
+cd clt-clever-screencastapp
 npm install
-
-# Run the application in development mode
+npm test
 npm start
 ```
 
 ### Building
 
 ```bash
-# Build for current platform
-npm run build
-
-# Build for specific platforms
-npm run win64
-npm run win32
-npm run ubuntu64
-npm run ubuntu32
+npm run build      # current platform, do not publish
+npm run win64      # Windows NSIS
+npm run linux      # Linux AppImage + deb
+npm run mac        # macOS dmg + zip (x64 and arm64)
 ```
 
-## License
-
-This is proprietary software owned by Closed-loop Technology Pte. Ltd. See LICENSE file for more information.
-
-## Support
-
-For support, please contact Closed-loop Technology Pte. Ltd:
-- Email: support@closed-loop.biz
-- Website: www.closed-loop.biz
-2. Registers the hostname with the CLEVER controller
-3. Uses the hostname for VNC connection establishment
+Release tags (`v*`) trigger GitHub Actions, which publish artifacts and electron-updater metadata. See [docs/auto-update.md](docs/auto-update.md).
 
 ## Websockify Bridge
 
 The application creates a websockify bridge that:
-- Converts VNC's TCP-based protocol to WebSocket protocol
-- Scans ports 5900-5905 to detect available VNC servers
-- Creates separate WebSocket endpoints for each detected VNC server
-- Enables secure connections using TLS/SSL
+
+- Converts VNC TCP to WebSocket
+- Scans ports 5900-5905 for available VNC servers
+- Creates a WebSocket endpoint for each detected server
 
 ## Project Structure
 
-- `/src`: Application source code
-  - `/assets`: CSS, JavaScript, and media files
-  - `index.html`: Main application interface
-  - `client.html`: Client connection interface
-  - `master.html`: Master control interface
-- `server.js`: HTTPS server implementation
-- `websockify.js`: WebSockets to TCP proxy implementation
-- `index.js`: Main Electron application logic
-- `preload.js`: Preload script for renderer process
+- `/src`: Dashboard HTML, CSS, and renderer
+- `index.js`: Electron main process
+- `preload.js`: Renderer IPC bridge
+- `update/`: Electron Updater status helpers
+- `server.js`: HTTPS status server
+- `websockify.js`: WebSockets to TCP proxy
 - `config.js`: Application configuration
-- `audiostream.js`: Audio streaming functionality
+- `audiostream.js`: Audio streaming
+- `.github/workflows/release.yml`: Windows / Linux / macOS publish pipeline
 
 ## Troubleshooting
 
-- **VNC Connection Issues**: Ensure VNC server is running on the computer. You can download TightVNC from https://www.tightvnc.com/download.php
+- **VNC Connection Issues**: Ensure a VNC server is running. TightVNC is available from https://www.tightvnc.com/download.php
 - **Audio Not Working**: Verify that audio streaming is enabled in config.js
-- **Auto-startup Issues**: Check system permissions for startup applications
+- **Updates**: See [docs/auto-update.md](docs/auto-update.md)
 
 ## Changelog
 
-For a detailed list of changes between versions, please see the [CHANGELOG.md](CHANGELOG.md) file.
-
-## Contact
-
-For support or inquiries, contact:
-- Website: [www.closed-loop.biz](https://www.closed-loop.biz)
-- Email: sales@closed-loop.biz
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-Copyright © 2000-2023, Closed-loop Technology Pte. Ltd. All rights reserved.
-
-This project is licensed under proprietary terms. For more details, see the [LICENSE](LICENSE) file.
-
+Copyright © 2000-2026, Closed-loop Technology Pte. Ltd. All rights reserved.

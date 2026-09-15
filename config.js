@@ -7,11 +7,11 @@ exports.autoshare = true
 
 // Window configuration
 exports.window = {
-  width: 450,         // Default window width in pixels
-  height: 800,         // Default window height in pixels
-  minWidth: 800,       // Minimum window width
-  minHeight: 600,      // Minimum window height
-  resizable: false     // Whether window can be resized
+  width: 1120,
+  height: 760,
+  minWidth: 960,
+  minHeight: 680,
+  resizable: true
 }
 
 // Connection settings
@@ -29,9 +29,9 @@ exports.server = {
 
 // Appearance settings
 exports.appearance = {
-  theme: 'dark',       // UI theme ('dark' or 'light')
-  showSplash: true,    // Show splash screen on startup
-  splashDuration: 5000 // Duration to show splash screen in milliseconds
+  theme: 'dark',
+  showSplash: false,
+  splashDuration: 0
 }
 
 // Debug and logging settings

@@ -25,6 +25,7 @@ const now = new Date()
 const moment = require('moment') // Replace date-and-time with moment
 const datelog = moment().format('YYYY-MM-DD')
 const config = require('./config')
+const { createAutoUpdateController } = require('./update/autoUpdate')
 
 // Configure logging
 var log = require('electron-log')
@@ -73,6 +74,7 @@ let win = null
 let appIcon = null
 let autoreload
 let isSharing = false // Track sharing state
+let updater = null
 
 const vncport = (process.platform == 'linux') ? '5900' : '5900'
 const screencastAutoLaunch = new AutoLaunch({
@@ -133,13 +135,9 @@ const template = [
       {
         label: 'Check for update',
         click: async () => {
-          dialog.showMessageBox({
-            type: 'info',
-            title: 'Updates',
-            message: 'Checking for updates...',
-            buttons: ['OK']
-          })
-          // In a production app, this would connect to update server
+          if (updater) {
+            updater.checkForUpdates(true)
+          }
         }
       },
       (isMac ? {
@@ -233,12 +231,12 @@ try {
     app.whenReady().then(() => {
       // Create main window
       win = new BrowserWindow({
-        width: config.window?.width || 1200,
-        height: config.window?.height || 960,
-        minWidth: config.window?.minWidth || 800,
-        minHeight: config.window?.minHeight || 600,
+        width: config.window?.width || 1120,
+        height: config.window?.height || 760,
+        minWidth: config.window?.minWidth || 960,
+        minHeight: config.window?.minHeight || 680,
         icon: iconPath,
-        resizable: config.window?.resizable !== undefined ? config.window.resizable : false,
+        resizable: config.window?.resizable !== undefined ? config.window.resizable : true,
         frame: false,
         webPreferences: {
           preload: path.join(__dirname, 'preload.js'),
@@ -411,6 +409,7 @@ try {
           appIcon.setImage(iconPath)
           appIcon.setToolTip('Screencast & VNC is not sharing')
           updateTrayMenu(false);
+          if (updater) updater.onSharingStopped()
           appIcon.displayBalloon({
             title: titlenotif,
             content: 'Screencast & VNC has stopped sharing',
@@ -522,6 +521,82 @@ try {
         return await getHostInfo()
       })
 
+      ipcMain.handle('get-system-info', async () => {
+        try {
+          const [osInfo, graphics, cpu] = await Promise.all([
+            si.osInfo(),
+            si.graphics(),
+            si.cpu()
+          ])
+          const displays = (graphics.displays || []).map((display, index) => ({
+            id: index + 1,
+            model: display.model || display.vendor || `Display ${index + 1}`,
+            vendor: display.vendor || '',
+            resolution: [display.currentResX || display.resolutionX, display.currentResY || display.resolutionY]
+              .filter(Boolean)
+              .join('x') || 'Unknown',
+            builtin: !!display.builtin,
+            connection: display.connection || display.displayId || ''
+          }))
+          return {
+            hostname,
+            hostnameLocal,
+            platform: process.platform,
+            arch: process.arch,
+            os: osInfo.distro || osInfo.platform || process.platform,
+            release: osInfo.release || os.release(),
+            cpu: cpu.brand || cpu.manufacturer || 'Unknown CPU',
+            displays,
+            appVersion: app.getVersion(),
+            packaged: app.isPackaged
+          }
+        } catch (err) {
+          log.error(`Error getting system info: ${err}`)
+          return {
+            hostname,
+            hostnameLocal,
+            platform: process.platform,
+            arch: process.arch,
+            os: process.platform,
+            release: os.release(),
+            cpu: '',
+            displays: [],
+            appVersion: app.getVersion(),
+            packaged: app.isPackaged
+          }
+        }
+      })
+
+      ipcMain.handle('check-clever-servers', async () => {
+        const servers = Array.isArray(config.cleverserver) ? config.cleverserver : []
+        const results = []
+        for (const host of servers) {
+          try {
+            const online = await isReachable(host, { timeout: 4000 })
+            results.push({ host, online })
+          } catch (err) {
+            results.push({ host, online: false })
+          }
+        }
+        return {
+          servers: results,
+          onlineCount: results.filter((item) => item.online).length
+        }
+      })
+
+      ipcMain.handle('get-app-settings', () => {
+        return {
+          autostartup: !!config.autostartup,
+          autoshare: !!config.autoshare,
+          audio: !!config.audio
+        }
+      })
+
+      ipcMain.handle('updater-check', () => updater && updater.checkForUpdates(true))
+      ipcMain.handle('updater-download', () => updater && updater.downloadUpdate())
+      ipcMain.handle('updater-install', () => updater && updater.installUpdate())
+      ipcMain.handle('updater-status', () => updater && updater.getStatus())
+
       // Set tray context menu
       appIcon.setContextMenu(contextMenu)
 
@@ -535,8 +610,24 @@ try {
         }
       })
 
+      updater = createAutoUpdateController({
+        app,
+        log,
+        dialog,
+        isSharing: () => isSharing,
+        sendToRenderer: (channel, data) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send(channel, data)
+          }
+        }
+      })
+
       // Set up auto reload based on config
       setupAutoReload(config.autorestart)
+
+      setTimeout(() => {
+        if (updater) updater.checkForUpdates(false)
+      }, 8000)
 
       // Window events
       win.on('close', (event) => {

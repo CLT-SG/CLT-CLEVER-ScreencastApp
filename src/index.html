@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>CLEVER KVM App</title>
+  <title>CLEVER ScreencastApp</title>
   <link rel="stylesheet" href="assets/css/style.css">
   <link rel="stylesheet" href="assets/css/fontawesome.min.css">
 </head>
@@ -13,131 +13,183 @@
 <body>
   <div class="window-controls">
     <div class="window-title-bar">
-      <div class="window-title">CLEVER KVM ver <span id="app-version"></span></div>
+      <div class="window-title">CLEVER ScreencastApp <span id="title-version"></span></div>
       <div class="window-controls-container">
-        <button id="close-button" class="window-control-button" title="Close">
+        <button id="close-button" class="window-control-button" title="Close to tray">
           <span class="window-control-icon">&#10005;</span>
         </button>
       </div>
     </div>
   </div>
 
-  <div class="app-container">
-    <div class="header-section">
-      <div class="header-text">
-        <h1>CLEVER KVM</h1>
-        <p class="subtitle">Screencast & Desktop Sharing</p>
-      </div>
-    </div>
-    
-    <!-- Connection Information -->
-    <div class="host-info-card">
-      <div class="card-header">
-        <h2>Connection Info</h2>
-        <div class="connection-indicator">
-          <span>Status:</span>
-          <span class="status-dot offline" id="status-indicator"></span>
+  <div class="dashboard">
+    <header class="dash-header">
+      <div class="brand">
+        <img src="assets/media/logo.png" alt="CLEVER" class="brand-logo">
+        <div>
+          <p class="eyebrow">Screencast management</p>
+          <h1>CLEVER KVM</h1>
         </div>
       </div>
-      
-      <div class="host-info-container">
-        <div class="host-info-row">
-          <div class="host-info-item">
-            <span class="host-info-label">IP:</span>
-            <div class="host-info-value-container">
-              <span id="ip-address" class="host-info-value copy-value" title="Click to copy">Checking...</span>
+      <div class="header-meta">
+        <div class="status-pill idle" id="app-status-pill">
+          <span class="status-dot offline" id="status-indicator"></span>
+          <span id="app-status-label">Idle</span>
+        </div>
+        <div class="version-chip">v<span id="app-version">—</span></div>
+      </div>
+    </header>
+
+    <main class="dash-grid">
+      <section class="card">
+        <div class="card-header">
+          <h2>Application Status</h2>
+          <span class="card-kicker" id="share-state-label">Not sharing</span>
+        </div>
+        <div class="metric-row">
+          <div class="metric">
+            <span class="metric-label">Service</span>
+            <strong id="app-runtime-state">Starting</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Platform</span>
+            <strong id="app-platform">Detecting…</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Packaged</span>
+            <strong id="app-packaged">—</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>CLEVER-Service Connection</h2>
+          <span class="card-kicker" id="clever-summary">Checking…</span>
+        </div>
+        <div id="clever-servers" class="stack-list">
+          <div class="empty-state">Checking configured CLEVER-Service hosts…</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>Device Information</h2>
+        </div>
+        <div class="info-list">
+          <div class="info-row">
+            <span>IP</span>
+            <div class="value-copy">
+              <code id="ip-address" class="copy-value" title="Click to copy">Checking…</code>
               <button class="copy-button" data-target="ip-address">Copy</button>
             </div>
           </div>
-        </div>
-        <div class="host-info-row">
-          <div class="host-info-item">
-            <span class="host-info-label">Host:</span>
-            <div class="host-info-value-container">
-              <span id="hostname" class="host-info-value copy-value" title="Click to copy">Checking...</span>
+          <div class="info-row">
+            <span>Host</span>
+            <div class="value-copy">
+              <code id="hostname" class="copy-value" title="Click to copy">Checking…</code>
               <button class="copy-button" data-target="hostname">Copy</button>
             </div>
           </div>
-        </div>
-        <div class="host-info-row">
-          <div class="host-info-item">
-            <span class="host-info-label">FQDN:</span>
-            <div class="host-info-value-container">
-              <span id="hostname-local" class="host-info-value copy-value" title="Click to copy">Checking...</span>
+          <div class="info-row">
+            <span>FQDN</span>
+            <div class="value-copy">
+              <code id="hostname-local" class="copy-value" title="Click to copy">Checking…</code>
               <button class="copy-button" data-target="hostname-local">Copy</button>
             </div>
           </div>
+          <div class="info-row">
+            <span>OS</span>
+            <code id="device-os">Checking…</code>
+          </div>
         </div>
-      </div>
-    </div>
+      </section>
 
-    <!-- Control Panel -->
-    <div class="control-panel">
-      <div class="control-buttons">
-        <button id="start-button" class="action-button start-button">
-          <span class="button-icon">▶</span>
-          <span class="button-text">Start</span>
-        </button>
-        <button id="stop-button" class="action-button stop-button">
-          <span class="button-icon">■</span>
-          <span class="button-text">Stop</span>
-        </button>
-        <button id="restart-button" class="action-button reset-button">
-          <span class="button-icon">↻</span>
-          <span class="button-text">Restart</span>
-        </button>
-      </div>
-    </div>
-    
-    <!-- Available VNC Connections -->
-    <div class="vnc-ports-container card">
-      <h3>Available VNC Connections</h3>
-      <div id="vnc-ports-info" class="card-content">
-        <div class="loading-spinner">
-          <div class="spinner"></div>
-          <p>Scanning for VNC ports...</p>
+      <section class="card">
+        <div class="card-header">
+          <h2>Monitor Information</h2>
+          <span class="card-kicker" id="monitor-summary">Detecting…</span>
         </div>
-      </div>
-    </div>
+        <div id="monitor-list" class="stack-list">
+          <div class="empty-state">Detecting attached displays…</div>
+        </div>
+      </section>
 
-    <!-- Settings -->
-    <div class="settings-panel card">
-      <h3>Settings</h3>
-      <div class="card-content">
+      <section class="card span-2">
+        <div class="card-header">
+          <h2>VNC Information</h2>
+          <span class="card-kicker" id="vnc-summary">Scanning…</span>
+        </div>
+        <div id="vnc-ports-info" class="card-content">
+          <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Scanning for VNC ports…</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>Update Information</h2>
+          <span class="card-kicker" id="update-state-label">Idle</span>
+        </div>
+        <p class="update-message" id="update-message">Updates have not been checked yet.</p>
+        <div class="progress-track" id="update-progress-track" hidden>
+          <div class="progress-fill" id="update-progress-fill"></div>
+        </div>
+        <div class="inline-actions">
+          <button id="check-update-button" class="ghost-button">Check for updates</button>
+          <button id="download-update-button" class="ghost-button" hidden>Download update</button>
+          <button id="install-update-button" class="ghost-button" hidden>Restart to install</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>Management Controls</h2>
+        </div>
+        <div class="control-buttons">
+          <button id="start-button" class="action-button start-button">
+            <span class="button-icon">▶</span>
+            <span class="button-text">Start</span>
+          </button>
+          <button id="stop-button" class="action-button stop-button" disabled>
+            <span class="button-icon">■</span>
+            <span class="button-text">Stop</span>
+          </button>
+          <button id="restart-button" class="action-button reset-button">
+            <span class="button-icon">↻</span>
+            <span class="button-text">Restart</span>
+          </button>
+        </div>
         <div class="settings-row">
-          <div class="setup">
-            <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="autostartup" id="autostartup"
-              checked>
-            <label for="autostartup">Auto startup on PC boot</label>
-          </div>
-          <div class="setup">
-            <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="autoshare" id="autoshare"
-              checked>
-            <label for="autoshare">Auto share on launch</label>
-          </div>
-          <div class="setup">
+          <label class="setup">
+            <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="autostartup" id="autostartup" checked>
+            Auto startup on PC boot
+          </label>
+          <label class="setup">
+            <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="autoshare" id="autoshare" checked>
+            Auto share on launch
+          </label>
+          <label class="setup">
             <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="audio" id="audio" checked>
-            <label for="audio">Enable Audio</label>
-          </div>
+            Enable Audio
+          </label>
         </div>
+      </section>
+    </main>
+
+    <footer class="dash-footer">
+      <div class="clt-logo">
+        <img src="assets/media/logo.png" alt="Closed-loop Technology">
       </div>
-    </div>
-
-    <div class="notification-area" id="notification-area">
-      <!-- Notifications will appear here -->
-    </div>
+      <div class="copyright-desc">
+        © 2000-<span id="current-year"></span> Closed-loop Technology. All rights reserved.
+      </div>
+    </footer>
   </div>
 
-  <div class="copyright">
-    <div class="clt-logo">
-      <img src="assets/media/logo.png" alt="Company Logo" style="height: 40px;">
-    </div>
-    <div class="copyright-desc">
-      © 2000-<span id="current-year"></span> Closed-loop Technology<br>
-      All rights reserved.
-    </div>
-  </div>
-
+  <div class="notification-area" id="notification-area"></div>
   <script src="renderer.js"></script>
 </body>
 
