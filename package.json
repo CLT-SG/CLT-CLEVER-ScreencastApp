@@ -65,6 +65,18 @@
       "!docs/**/*"
     ],
     "asar": true,
+    "asarUnpack": [
+      "src/assets/media/**"
+    ],
+    "extraResources": [
+      {
+        "from": "src/assets/media",
+        "to": "media",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
     "compression": "normal",
     "publish": {
       "provider": "github",

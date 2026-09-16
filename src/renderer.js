@@ -13,6 +13,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const downloadUpdateButton = document.getElementById('download-update-button');
   const installUpdateButton = document.getElementById('install-update-button');
 
+  const IMG_FALLBACK_SRC = 'assets/media/status-icon.svg';
+
+  function wireImageFallbacks() {
+    document.querySelectorAll('img').forEach((img) => {
+      img.addEventListener('error', () => {
+        const attempted = img.currentSrc || img.getAttribute('src') || '';
+        console.warn('[assets] Image failed to load', attempted);
+        if (img.dataset.assetFallback === 'none') {
+          return;
+        }
+        if (img.dataset.assetFallback === 'svg') {
+          img.dataset.assetFallback = 'none';
+          img.removeAttribute('src');
+          img.classList.add('asset-missing');
+          img.alt = img.alt || 'CLEVER';
+          return;
+        }
+        img.dataset.assetFallback = 'svg';
+        img.src = IMG_FALLBACK_SRC;
+      });
+    });
+  }
+
+  wireImageFallbacks();
+
   let isConnected = false;
   let serviceSnapshot = null;
   let vncPorts = [];

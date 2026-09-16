@@ -6,7 +6,8 @@ const {
   ipcMain,
   Menu,
   Tray,
-  screen
+  screen,
+  nativeImage
 } = require('electron')
 const isMac = process.platform === 'darwin'
 const path = require('path')
@@ -20,8 +21,6 @@ const websockify = require('./websockify')
 const { createServer } = require("https")
 const async = require('async')
 const logdir = path.normalize(homedir + '/clevervnc-log')
-const iconPath = path.join(__dirname, '/src/assets/media/logo.png')
-const publishPath = path.join(__dirname, '/src/assets/media/publish.png')
 const now = new Date()
 const moment = require('moment') // Replace date-and-time with moment
 const datelog = moment().format('YYYY-MM-DD')
@@ -31,6 +30,7 @@ const { mdnsHostname } = require('./lib/host-names')
 const { AudioBridge } = require('./lib/audio-bridge')
 const { normalizeAudioConfig, configLine } = require('./lib/audio-config')
 const { createUpdater } = require('./lib/updater')
+const { createAssetLoader } = require('./lib/assets')
 
 // Configure logging
 var log = require('electron-log')
@@ -61,10 +61,124 @@ async function getHostInfo() {
   }
 }
 
+function readStartupFile(filePath, label) {
+  try {
+    const data = fs.readFileSync(filePath)
+    log.info(`[startup] Loaded ${label} from ${filePath} (${data.length} bytes)`)
+    return data
+  } catch (err) {
+    log.error(`[startup] Failed to load ${label} from ${filePath}: ${err.message}`)
+    throw err
+  }
+}
+
+function getAssetLoader() {
+  if (assetLoader) {
+    return assetLoader
+  }
+  let userDataDir = null
+  try {
+    userDataDir = app.getPath('userData')
+  } catch (err) {
+    log.warn(`[startup] userData path unavailable: ${err.message}`)
+  }
+  assetLoader = createAssetLoader({
+    appRoot: __dirname,
+    resourcesPath: process.resourcesPath,
+    isPackaged: app.isPackaged,
+    nativeImage,
+    logger: log,
+    userDataDir
+  })
+  return assetLoader
+}
+
+function createSafeTray(image, materializedPath) {
+  try {
+    if (!image) {
+      throw new Error('No tray image available')
+    }
+    const tray = new Tray(image)
+    log.info('[startup] Tray icon created from nativeImage')
+    return tray
+  } catch (err) {
+    log.warn(`[startup] Tray from nativeImage failed: ${err.message}`)
+    if (materializedPath) {
+      try {
+        const tray = new Tray(materializedPath)
+        log.info(`[startup] Tray icon created from materialized path ${materializedPath}`)
+        return tray
+      } catch (pathErr) {
+        log.error(`[startup] Tray from materialized path failed: ${pathErr.message}`)
+      }
+    }
+    log.error('[startup] Continuing without a system tray icon')
+    return {
+      setImage() {},
+      setToolTip() {},
+      setContextMenu() {},
+      displayBalloon() {},
+      destroy() {},
+      on() {}
+    }
+  }
+}
+
+function createMainWindow(icon) {
+  const options = {
+    width: config.window?.width || 1200,
+    height: config.window?.height || 960,
+    minWidth: config.window?.minWidth || 800,
+    minHeight: config.window?.minHeight || 600,
+    resizable: config.window?.resizable !== undefined ? config.window.resizable : false,
+    frame: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+      webSecurity: true
+    }
+  }
+  if (icon) {
+    options.icon = icon
+  }
+  try {
+    return new BrowserWindow(options)
+  } catch (err) {
+    log.warn(`[startup] BrowserWindow with icon failed: ${err.message}`)
+    delete options.icon
+    return new BrowserWindow(options)
+  }
+}
+
+function loadTrayImages() {
+  const loader = getAssetLoader()
+  const env = loader.environment()
+  log.info(`[startup] Environment packaged=${env.packaged} platform=${env.platform} arch=${process.arch} asar=${env.asar}`)
+  log.info(`[startup] appRoot=${env.appRoot}`)
+  log.info(`[startup] resourcesPath=${env.resourcesPath}`)
+  log.info(`[startup] execPath=${process.execPath}`)
+
+  const idle = loader.loadNativeImage('logo.png', { fallback: ['icon-512.png', 'publish.png'] })
+  const publish = loader.loadNativeImage('publish.png', { fallback: ['logo.png', 'icon-512.png'] })
+  trayIdleImage = idle.image
+  trayPublishImage = publish.image
+  const materializedIdle = loader.materializeAsset('logo.png', { fallback: 'icon-512.png' })
+  const materializedPublish = loader.materializeAsset('publish.png', { fallback: 'logo.png' })
+  if (idle.usedFallback) {
+    log.warn(`[startup] Idle tray image used fallback source=${idle.source}`)
+  }
+  if (publish.usedFallback) {
+    log.warn(`[startup] Publish tray image used fallback source=${publish.source}`)
+  }
+  return { idle, publish, materializedIdle, materializedPublish }
+}
+
 // Websockify settings
 const server = createServer({
-  cert: fs.readFileSync(path.join(__dirname, '/cert/example.com+5.pem')),
-  key: fs.readFileSync(path.join(__dirname, '/cert/example.com+5-key.pem'))
+  cert: readStartupFile(path.join(__dirname, 'cert', 'example.com+5.pem'), 'TLS certificate'),
+  key: readStartupFile(path.join(__dirname, 'cert', 'example.com+5-key.pem'), 'TLS private key')
 })
 
 // Create log directory if it doesn't exist
@@ -85,6 +199,9 @@ let connectionManager = null
 let audioBridge = null
 let audioConfig = normalizeAudioConfig(config)
 let updater = null
+let assetLoader = null
+let trayIdleImage = null
+let trayPublishImage = null
 
 const vncport = (process.platform == 'linux') ? '5900' : '5900'
 const screencastAutoLaunch = new AutoLaunch({
@@ -195,7 +312,9 @@ function setupAutoReload(interval) {
   autoreload = setInterval(() => {
     if (win) {
       log.info(`Auto reload triggered (${interval}ms interval)`)
-      win.webContents.session.clearCache()
+      win.webContents.session.clearCache().catch((err) => {
+        log.warn(`[startup] Auto-reload cache clear failed: ${err.message}`)
+      })
     }
   }, interval)
 }
@@ -235,29 +354,26 @@ try {
     process.on('uncaughtException', (err) => {
       log.error('Uncaught exception:', err)
     })
+    process.on('unhandledRejection', (reason) => {
+      log.error('Unhandled promise rejection:', reason)
+    })
 
     // Start HTTP server
-    server.listen(config.server?.port || 8840, () => log.info(`Server listening on ${hostname}:${config.server?.port || 8840}`))
+    try {
+      server.listen(config.server?.port || 8840, () => log.info(`Server listening on ${hostname}:${config.server?.port || 8840}`))
+      server.on('error', (err) => {
+        log.error(`[startup] HTTPS server error: ${err.message}`)
+      })
+    } catch (err) {
+      log.error(`[startup] Failed to start HTTPS server: ${err.message}`)
+    }
 
     // App startup config
     app.whenReady().then(() => {
+      try {
+      const trayImages = loadTrayImages()
       // Create main window
-      win = new BrowserWindow({
-        width: config.window?.width || 1200,
-        height: config.window?.height || 960,
-        minWidth: config.window?.minWidth || 800,
-        minHeight: config.window?.minHeight || 600,
-        icon: iconPath,
-        resizable: config.window?.resizable !== undefined ? config.window.resizable : false,
-        frame: false,
-        webPreferences: {
-          preload: path.join(__dirname, 'preload.js'),
-          contextIsolation: true,
-          nodeIntegration: false,
-          sandbox: false,
-          webSecurity: true
-        }
-      })
+      win = createMainWindow(trayIdleImage)
       
       // Add CSS to hide scrollbars at application level
       win.webContents.on('did-finish-load', () => {
@@ -269,8 +385,11 @@ try {
             -ms-overflow-style: none !important;
             scrollbar-width: none !important;
           }
-        `)
-        log.info('Applied CSS to hide scrollbars')
+        `).then(() => {
+          log.info('Applied CSS to hide scrollbars')
+        }).catch((err) => {
+          log.warn(`[startup] Failed to insert scrollbar CSS: ${err.message}`)
+        })
       })
 
       // Auto startup settings
@@ -284,7 +403,7 @@ try {
       updateMenu()
 
       // Create tray icon with enhanced menu
-      appIcon = new Tray(iconPath)
+      appIcon = createSafeTray(trayIdleImage, trayImages.materializedIdle && trayImages.materializedIdle.path)
       const contextMenu = Menu.buildFromTemplate([
         {
           label: 'Connection Status',
@@ -435,31 +554,47 @@ try {
 
       // Update tray icon with tooltip and balloon notification
       ipcMain.handle('tray-icon', async (event, trayimg) => {
-        const titlenotif = "Video Wall Screencast & VNC Notification"
-        if (trayimg === 'publish') {
-          appIcon.setImage(publishPath)
-          appIcon.setToolTip('Screencast & VNC is running')
-          updateTrayMenu(true);
-          if (connectionManager) {
-            connectionManager.notifySharing(true)
+        try {
+          const titlenotif = "Video Wall Screencast & VNC Notification"
+          if (!appIcon) {
+            log.warn('[startup] Tray icon update skipped; tray was not created')
+            return
           }
-          appIcon.displayBalloon({
-            title: titlenotif,
-            content: 'Screencast & VNC has started sharing',
-            iconType: 'info'
-          })
-        } else if (trayimg === 'stopped') {
-          appIcon.setImage(iconPath)
-          appIcon.setToolTip('Screencast & VNC is not sharing')
-          updateTrayMenu(false);
-          if (connectionManager) {
-            connectionManager.notifySharing(false)
+          if (trayimg === 'publish') {
+            try {
+              appIcon.setImage(trayPublishImage || (trayImages.materializedPublish && trayImages.materializedPublish.path))
+            } catch (err) {
+              log.error(`[assets] Failed to set publish tray image: ${err.message}`)
+            }
+            appIcon.setToolTip('Screencast & VNC is running')
+            updateTrayMenu(true);
+            if (connectionManager) {
+              connectionManager.notifySharing(true)
+            }
+            appIcon.displayBalloon({
+              title: titlenotif,
+              content: 'Screencast & VNC has started sharing',
+              iconType: 'info'
+            })
+          } else if (trayimg === 'stopped') {
+            try {
+              appIcon.setImage(trayIdleImage || (trayImages.materializedIdle && trayImages.materializedIdle.path))
+            } catch (err) {
+              log.error(`[assets] Failed to set idle tray image: ${err.message}`)
+            }
+            appIcon.setToolTip('Screencast & VNC is not sharing')
+            updateTrayMenu(false);
+            if (connectionManager) {
+              connectionManager.notifySharing(false)
+            }
+            appIcon.displayBalloon({
+              title: titlenotif,
+              content: 'Screencast & VNC has stopped sharing',
+              iconType: 'warning'
+            })
           }
-          appIcon.displayBalloon({
-            title: titlenotif,
-            content: 'Screencast & VNC has stopped sharing',
-            iconType: 'warning'
-          })
+        } catch (err) {
+          log.error(`[assets] Tray icon update failed: ${err.message}`)
         }
       })
 
@@ -672,6 +807,8 @@ try {
       // Clear cache on startup
       win.webContents.session.clearCache().then(() => {
         log.info("Cache cleared on startup")
+      }).catch((err) => {
+        log.warn(`[startup] Cache clear failed: ${err.message}`)
       })
 
       // Listen for DOM ready from renderer
@@ -692,7 +829,14 @@ try {
       })
 
       // Check VNC status and open window
-      checkVncAndOpenWindow()
+      checkVncAndOpenWindow().catch((err) => {
+        log.error(`[startup] VNC startup check failed: ${err.message}`)
+      })
+      } catch (err) {
+        log.error('[startup] Application failed to start:', err)
+      }
+    }).catch((err) => {
+      log.error('[startup] app.whenReady failed:', err)
     })
   }
 } catch (ex) {
@@ -720,7 +864,9 @@ async function checkVncAndOpenWindow() {
     if (status) {
       const hostInfo = await getHostInfo()
       ipaddress = hostInfo.ip
-      win.loadFile(path.join(__dirname, 'src', 'index.html'))
+      win.loadFile(path.join(__dirname, 'src', 'index.html')).catch((err) => {
+        log.error(`[startup] Failed to load dashboard from src/index.html: ${err.message}`)
+      })
       pingstat = false
       log.info(`VNC server found on port ${vncport}, loading application`)
       log.info(`Host information: IP=${hostInfo.ip}, Hostname=${hostInfo.hostname}, Hostname.local=${hostInfo.hostnameLocal}`)
@@ -753,6 +899,10 @@ async function checkVncAndOpenWindow() {
           if (response === 0) {
             app.exit()
           }
+        })
+        .catch((err) => {
+          log.error(`[startup] VNC missing dialog failed: ${err.message}`)
+          app.exit()
         })
       
       log.warn('VNC is not installed on this PC.')
