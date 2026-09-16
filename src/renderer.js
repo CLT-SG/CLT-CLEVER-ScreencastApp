@@ -1,6 +1,5 @@
-// Main renderer process code
 document.addEventListener('DOMContentLoaded', () => {
-  // Get references to UI elements
+  const DashboardState = window.dashboardState || {};
   const minimizeButton = document.getElementById('minimize-button');
   const maximizeButton = document.getElementById('maximize-button');
   const closeButton = document.getElementById('close-button');
@@ -10,238 +9,197 @@ document.addEventListener('DOMContentLoaded', () => {
   const stopButton = document.getElementById('stop-button');
   const restartButton = document.getElementById('restart-button');
   const notificationArea = document.getElementById('notification-area');
-  
-  // Track connection state
-  let isConnected = false;
+  const checkUpdatesButton = document.getElementById('check-updates-button');
+  const downloadUpdateButton = document.getElementById('download-update-button');
+  const installUpdateButton = document.getElementById('install-update-button');
 
-  // Function to show notifications
+  let isConnected = false;
+  let serviceSnapshot = null;
+  let vncPorts = [];
+  let updateStatus = null;
+  let heartbeatTimer = null;
+
   function showNotification(message, type = 'info', duration = 5000) {
+    if (!notificationArea) return;
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
     notification.innerHTML = `
       <span class="notification-message">${message}</span>
-      <button class="notification-close">×</button>
+      <button class="notification-close" type="button">×</button>
     `;
-    
     notificationArea.appendChild(notification);
-    
-    // Add event listener to close button
     notification.querySelector('.notification-close').addEventListener('click', () => {
       notification.classList.add('notification-hiding');
-      setTimeout(() => {
-        notification.remove();
-      }, 300);
+      setTimeout(() => notification.remove(), 300);
     });
-    
-    // Auto remove after duration
     setTimeout(() => {
       if (notification.parentNode) {
         notification.classList.add('notification-hiding');
         setTimeout(() => {
-          if (notification.parentNode) {
-            notification.remove();
-          }
+          if (notification.parentNode) notification.remove();
         }, 300);
       }
     }, duration);
   }
 
-  // Copy to clipboard functionality
-  document.querySelectorAll('.copy-button').forEach(button => {
-    button.addEventListener('click', (e) => {
-      const targetId = e.target.getAttribute('data-target');
-      const textToCopy = document.getElementById(targetId).textContent;
-      
-      navigator.clipboard.writeText(textToCopy)
-        .then(() => {
-          button.textContent = 'Copied!';
-          setTimeout(() => {
-            button.textContent = 'Copy';
-          }, 2000);
-          showNotification(`Copied ${textToCopy} to clipboard`, 'success', 3000);
-        })
-        .catch(err => {
-          console.error('Error copying text: ', err);
-          showNotification('Failed to copy text', 'error', 3000);
-        });
+  function copyText(value, label) {
+    if (!value || value === '—' || value === 'Checking…') return;
+    navigator.clipboard.writeText(value).then(() => {
+      showNotification(`Copied ${label || value} to clipboard`, 'success', 2500);
+    }).catch(() => {
+      showNotification('Failed to copy text', 'error', 3000);
     });
+  }
+
+  document.querySelectorAll('.copy-value').forEach((element) => {
+    element.addEventListener('click', () => copyText(element.textContent, element.id));
   });
 
-  // Fetch version and update UI
   if (versionSpan) {
-    window.api.getAppVersion().then(version => {
-      versionSpan.textContent = version;
-    }).catch(err => {
+    window.api.getAppVersion().then((version) => {
+      versionSpan.textContent = `v${version}`;
+    }).catch((err) => {
       console.error('Error fetching app version:', err);
     });
   }
 
-  // Window control buttons
-  if (minimizeButton) {
-    minimizeButton.addEventListener('click', () => {
-      window.api.minimize();
-    });
-  }
-
-  if (maximizeButton) {
-    maximizeButton.addEventListener('click', () => {
-      window.api.maximize();
-    });
-  }
-
-  if (closeButton) {
-    closeButton.addEventListener('click', () => {
-      window.api.close();
-    });
-  }
-
-  // Listen for tray actions
-  window.api.onTrayAction((action) => {
-    console.log('Received tray action:', action);
-    if (action === 'start') {
-      startSharing();
-    } else if (action === 'stop') {
-      stopSharing();
+  const settings = window.api.config || {};
+  ['autostartup', 'autoshare'].forEach((name) => {
+    const checkbox = document.getElementById(name);
+    if (checkbox && typeof settings[name] === 'boolean') {
+      checkbox.checked = settings[name];
     }
   });
 
-  // Start/Stop/Restart buttons with enhanced functionality
+  if (minimizeButton) minimizeButton.addEventListener('click', () => window.api.minimize());
+  if (maximizeButton) maximizeButton.addEventListener('click', () => window.api.maximize());
+  if (closeButton) closeButton.addEventListener('click', () => window.api.close());
+
+  window.api.onTrayAction((action) => {
+    if (action === 'start') startSharing();
+    if (action === 'stop') stopSharing();
+  });
+
+  function refreshHeader() {
+    const overall = DashboardState.overallStatusView
+      ? DashboardState.overallStatusView({
+          sharing: isConnected,
+          connection: serviceSnapshot,
+          updater: updateStatus
+        })
+      : {
+          tone: isConnected ? 'success' : 'neutral',
+          label: isConnected ? 'Sharing' : 'Idle',
+          sharingLabel: isConnected ? 'Sharing' : 'Idle',
+          sharingTone: isConnected ? 'success' : 'neutral'
+        };
+
+    const overallEl = document.getElementById('overall-status');
+    const sharingEl = document.getElementById('sharing-status');
+    const updateBadge = document.getElementById('update-badge');
+    const vncBadge = document.getElementById('vnc-sharing-badge');
+
+    if (overallEl) {
+      overallEl.className = `badge tone-${overall.tone}`;
+      overallEl.textContent = overall.label;
+    }
+    if (sharingEl) {
+      sharingEl.className = `badge tone-${overall.sharingTone}`;
+      sharingEl.textContent = overall.sharingLabel;
+    }
+    if (vncBadge) {
+      vncBadge.className = `badge tone-${overall.sharingTone}`;
+      vncBadge.textContent = overall.sharingLabel;
+    }
+    if (statusDot) {
+      statusDot.className = `status-dot ${isConnected ? 'online' : 'offline'}`;
+    }
+    if (updateBadge && DashboardState.updaterStatusView) {
+      const updaterView = DashboardState.updaterStatusView(updateStatus);
+      const show = ['available', 'downloading', 'ready', 'error'].includes(updaterView.state);
+      updateBadge.hidden = !show;
+      updateBadge.className = `badge tone-${updaterView.tone}`;
+      updateBadge.textContent = updaterView.message;
+    }
+  }
+
   function startSharing() {
     window.api.setTrayIcon('publish');
-    if (statusDot) {
-      statusDot.classList.remove('offline');
-      statusDot.classList.add('online');
-    }
     isConnected = true;
     window.api.updateTrayStatus(true);
+    if (startButton) startButton.disabled = true;
+    if (stopButton) stopButton.disabled = false;
+    refreshHeader();
+    applyVncInfo();
     showNotification('VNC sharing started successfully', 'success');
-    console.log('VNC sharing started');
-    
-    // Update UI elements
-    startButton.disabled = true;
-    stopButton.disabled = false;
   }
-  
+
   function stopSharing() {
     window.api.setTrayIcon('stopped');
-    if (statusDot) {
-      statusDot.classList.remove('online');
-      statusDot.classList.add('offline');
-    }
     isConnected = false;
     window.api.updateTrayStatus(false);
+    if (startButton) startButton.disabled = false;
+    if (stopButton) stopButton.disabled = true;
+    refreshHeader();
+    applyVncInfo();
     showNotification('VNC sharing stopped', 'info');
-    console.log('VNC sharing stopped');
-    
-    // Update UI elements
-    startButton.disabled = false;
-    stopButton.disabled = true;
   }
 
-  if (startButton) {
-    startButton.addEventListener('click', startSharing);
-  }
-
+  if (startButton) startButton.addEventListener('click', startSharing);
   if (stopButton) {
-    stopButton.disabled = true; // Initially disabled
+    stopButton.disabled = true;
     stopButton.addEventListener('click', stopSharing);
   }
-
   if (restartButton) {
     restartButton.addEventListener('click', () => {
       showNotification('Restarting application...', 'info');
-      setTimeout(() => {
-        window.api.restartApp();
-      }, 1000);
+      setTimeout(() => window.api.restartApp(), 1000);
     });
   }
 
-  // Handle settings checkboxes
-  const settingsCheckboxes = document.querySelectorAll('.settings-checkbox');
-  if (settingsCheckboxes.length > 0) {
-    settingsCheckboxes.forEach(checkbox => {
-      if (checkbox) {
-        checkbox.addEventListener('change', (e) => {
-          const setting = e.target.getAttribute('data-setting');
-          const value = e.target.checked;
-          if (setting) {
-            window.api.saveConfig(setting, `exports.${setting} = ${value}`, value);
-            showNotification(`Setting "${setting}" ${value ? 'enabled' : 'disabled'}`, 'info');
-          }
-        });
-      }
+  document.querySelectorAll('.settings-checkbox').forEach((checkbox) => {
+    checkbox.addEventListener('change', (e) => {
+      const setting = e.target.getAttribute('data-setting');
+      const value = e.target.checked;
+      if (!setting) return;
+      window.api.saveConfig(setting, `exports.${setting} = ${value}`, value);
+      showNotification(`Setting "${setting}" ${value ? 'enabled' : 'disabled'}`, 'info');
     });
-  }
-
-  // Initialize connection status and hostname information
-  window.api.getHostInfo().then(hostInfo => {
-    const ipElement = document.getElementById('ip-address');
-    const hostnameElement = document.getElementById('hostname');
-    const hostnameLocalElement = document.getElementById('hostname-local');
-    
-    if (ipElement) {
-      ipElement.textContent = hostInfo.ip;
-      console.log(`IP Address detected: ${hostInfo.ip}`);
-    }
-    
-    if (hostnameElement) {
-      hostnameElement.textContent = hostInfo.hostname;
-      console.log(`Hostname detected: ${hostInfo.hostname}`);
-    }
-    
-    if (hostnameLocalElement) {
-      hostnameLocalElement.textContent = hostInfo.hostnameLocal;
-      console.log(`Hostname.local detected: ${hostInfo.hostnameLocal}`);
-    }
-    
-    showNotification('Host information detected', 'success');
-    refreshServiceConnection();
-    refreshMonitors();
-    refreshAudioStatus();
-  }).catch(err => {
-    console.error('Error getting host information:', err);
-    showNotification('Failed to detect host information', 'error');
   });
 
-  function connectionLabel(snapshot) {
-    if (!snapshot) {
-      return { text: 'Disconnected', source: 'Not configured', css: 'offline' };
-    }
-    const stateMap = {
-      searching: 'Searching',
-      connected: 'Connected',
-      disconnected: 'Disconnected',
-      reconnecting: 'Reconnecting'
-    };
-    const sourceMap = {
-      manual: 'Manual Configuration',
-      discovered: 'Automatically Discovered'
-    };
-    return {
-      text: stateMap[snapshot.state] || snapshot.state,
-      source: sourceMap[snapshot.source] || (snapshot.config && snapshot.config.mode === 'manual' ? 'Manual Configuration' : 'Automatic discovery'),
-      css: snapshot.state || 'offline'
-    };
-  }
-
   function applyServiceSnapshot(snapshot) {
+    serviceSnapshot = snapshot;
+    const view = DashboardState.connectionStatusView
+      ? DashboardState.connectionStatusView(snapshot)
+      : { label: 'Disconnected', tone: 'danger', source: 'Not configured', baseUrl: 'Searching...', deviceId: '', registered: false, lastHeartbeatLabel: 'Never' };
+
     const dot = document.getElementById('service-status-dot');
     const label = document.getElementById('service-status-label');
     const sourceLabel = document.getElementById('service-source-label');
     const urlLabel = document.getElementById('service-url-label');
+    const registrationLabel = document.getElementById('service-registration-label');
+    const heartbeatLabel = document.getElementById('service-heartbeat-label');
+    const deviceIdLabel = document.getElementById('device-id');
     const autoRadio = document.getElementById('service-mode-auto');
     const manualRadio = document.getElementById('service-mode-manual');
     const hostInput = document.getElementById('service-host');
     const portInput = document.getElementById('service-port');
     const protocolInput = document.getElementById('service-protocol');
-    const info = connectionLabel(snapshot);
+    const manualFields = document.getElementById('service-manual-fields');
 
-    if (dot) {
-      dot.className = `status-dot ${info.css === 'connected' ? 'online' : info.css}`;
+    if (dot) dot.className = `status-dot ${view.state || view.tone}`;
+    if (label) label.textContent = view.label;
+    if (sourceLabel) sourceLabel.textContent = view.source;
+    if (urlLabel) urlLabel.textContent = view.baseUrl;
+    if (registrationLabel) {
+      registrationLabel.textContent = view.registered ? 'Registered' : 'Not registered';
     }
-    if (label) label.textContent = info.text;
-    if (sourceLabel) sourceLabel.textContent = info.source;
-    if (urlLabel) urlLabel.textContent = snapshot && snapshot.baseUrl ? snapshot.baseUrl : 'Searching...';
+    if (heartbeatLabel) {
+      heartbeatLabel.textContent = DashboardState.formatTimestamp
+        ? DashboardState.formatTimestamp(view.lastHeartbeatAt)
+        : view.lastHeartbeatLabel;
+    }
+    if (deviceIdLabel && view.deviceId) deviceIdLabel.textContent = view.deviceId;
     if (snapshot && snapshot.config) {
       if (autoRadio) autoRadio.checked = snapshot.config.mode !== 'manual';
       if (manualRadio) manualRadio.checked = snapshot.config.mode === 'manual';
@@ -249,23 +207,170 @@ document.addEventListener('DOMContentLoaded', () => {
       if (portInput && document.activeElement !== portInput) portInput.value = snapshot.config.port || 8000;
       if (protocolInput && document.activeElement !== protocolInput) protocolInput.value = snapshot.config.protocol || 'http';
     }
+    if (manualFields && manualRadio) {
+      manualFields.hidden = !manualRadio.checked;
+    }
+    applyVncInfo();
+    refreshHeader();
   }
 
   function renderMonitors(monitors) {
     const container = document.getElementById('monitors-info');
+    const count = document.getElementById('monitor-count');
+    const rows = DashboardState.monitorRows ? DashboardState.monitorRows(monitors) : (monitors || []);
+    if (count) count.textContent = `${rows.length} display${rows.length === 1 ? '' : 's'}`;
     if (!container) return;
-    if (!monitors || monitors.length === 0) {
-      container.innerHTML = '<p>No monitors detected.</p>';
+    if (!rows.length) {
+      container.innerHTML = '<p class="muted">No monitors detected.</p>';
       return;
     }
-    container.innerHTML = `<div class="monitor-list">${monitors.map((monitor, index) => `
-      <div class="monitor-item ${monitor.primary ? 'primary' : ''}">
-        <strong>${monitor.name || ('Monitor ' + (index + 1))}${monitor.primary ? ' (Primary)' : ''}</strong><br>
-        X: ${monitor.x} &nbsp; Y: ${monitor.y}<br>
-        Width: ${monitor.width} &nbsp; Height: ${monitor.height}<br>
-        ${monitor.resolution || ''}
-      </div>
-    `).join('')}</div>`;
+    container.innerHTML = `
+      <table class="dashboard-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>ID</th>
+            <th>Primary</th>
+            <th>Resolution</th>
+            <th>X</th>
+            <th>Y</th>
+            <th>W</th>
+            <th>H</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((monitor) => `
+            <tr class="${monitor.primary ? 'primary' : ''}">
+              <td>${monitor.name}</td>
+              <td>${monitor.id}</td>
+              <td>${monitor.primary ? 'Yes' : 'No'}</td>
+              <td>${monitor.resolution}</td>
+              <td>${monitor.x}</td>
+              <td>${monitor.y}</td>
+              <td>${monitor.width}</td>
+              <td>${monitor.height}</td>
+              <td>${monitor.online ? 'Online' : 'Offline'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function applyVncInfo() {
+    const view = DashboardState.vncView
+      ? DashboardState.vncView(serviceSnapshot, vncPorts)
+      : { port: 5900, wsPort: 8840, wsPath: '/screen0', connections: vncPorts };
+    const portLabel = document.getElementById('vnc-port-label');
+    const wsPortLabel = document.getElementById('ws-port-label');
+    const wsPathLabel = document.getElementById('ws-path-label');
+    const sourceLabel = document.getElementById('vnc-source-label');
+    if (portLabel) portLabel.textContent = String(view.port);
+    if (wsPortLabel) wsPortLabel.textContent = String(view.wsPort);
+    if (wsPathLabel) wsPathLabel.textContent = view.wsPath;
+    if (sourceLabel) {
+      if (view.connections && view.connections[0]) {
+        const first = view.connections[0];
+        sourceLabel.textContent = `${first.hostnameLocal || first.hostname || first.target}:${first.port || view.port}`;
+      } else {
+        sourceLabel.textContent = isConnected ? 'Sharing' : 'No VNC source';
+      }
+    }
+  }
+
+  function renderVncPorts(ports) {
+    vncPorts = ports || [];
+    applyVncInfo();
+    const portsContainer = document.getElementById('vnc-ports-info');
+    if (!portsContainer) return;
+    portsContainer.innerHTML = '';
+
+    if (vncPorts.length > 0) {
+      if (statusDot && !isConnected) statusDot.classList.add('ready');
+      const table = document.createElement('table');
+      table.className = 'vnc-ports-table';
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th>Screen</th>
+            <th>IP</th>
+            <th>Hostname</th>
+            <th>FQDN</th>
+            <th></th>
+          </tr>
+        </thead>
+      `;
+      const tbody = document.createElement('tbody');
+      vncPorts.forEach((port) => {
+        const row = document.createElement('tr');
+        const hostnameValue = `${port.hostname}:${port.port}`;
+        const fqdnValue = `${port.hostnameLocal}:${port.port}`;
+        row.innerHTML = `
+          <td>${String(port.path || '').replace('/screen', '')}</td>
+          <td class="copy-value">${port.target}</td>
+          <td class="copy-value">${hostnameValue}</td>
+          <td class="copy-value">${fqdnValue}</td>
+          <td><button class="mini-button copy-button" type="button">Copy</button></td>
+        `;
+        row.querySelectorAll('.copy-value').forEach((cell) => {
+          cell.addEventListener('click', () => copyText(cell.textContent));
+        });
+        row.querySelector('.copy-button').addEventListener('click', () => copyText(fqdnValue, 'FQDN'));
+        tbody.appendChild(row);
+      });
+      table.appendChild(tbody);
+      portsContainer.appendChild(table);
+      updateConnectionInfo(vncPorts[0]);
+      showNotification(`Found ${vncPorts.length} VNC connection${vncPorts.length > 1 ? 's' : ''}`, 'success');
+      return;
+    }
+
+    const empty = document.createElement('div');
+    empty.className = 'no-ports-message';
+    empty.innerHTML = `
+      <p>No VNC ports were found on this system.</p>
+      <p>Make sure your VNC server is running and try again.</p>
+      <button id="rescan-button" class="action-button reset-button" type="button">Scan Again</button>
+    `;
+    portsContainer.appendChild(empty);
+    portsContainer.querySelector('#rescan-button').addEventListener('click', scanVncPorts);
+    showNotification('No VNC ports found', 'warning');
+  }
+
+  function updateConnectionInfo(port) {
+    if (!port) return;
+    const ipElement = document.getElementById('ip-address');
+    const hostnameElement = document.getElementById('hostname');
+    const hostnameLocalElement = document.getElementById('hostname-local');
+    if (ipElement) ipElement.textContent = port.target;
+    if (hostnameElement) hostnameElement.textContent = `${port.hostname}:${port.port}`;
+    if (hostnameLocalElement) hostnameLocalElement.textContent = `${port.hostnameLocal}:${port.port}`;
+  }
+
+  function scanVncPorts() {
+    const portsContainer = document.getElementById('vnc-ports-info');
+    if (portsContainer) {
+      portsContainer.innerHTML = `
+        <div class="loading-spinner">
+          <div class="spinner"></div>
+          <p>Scanning for VNC ports…</p>
+        </div>
+      `;
+    }
+    window.api.scanPortsExtended().then(renderVncPorts).catch((err) => {
+      console.error('Error scanning ports:', err);
+      showNotification('Failed to scan for VNC ports', 'error');
+      if (!portsContainer) return;
+      portsContainer.innerHTML = `
+        <div class="error-message">
+          <p>Error scanning for VNC ports.</p>
+          <p class="error-details">${err.message || 'Unknown error'}</p>
+          <button id="retry-scan-button" class="action-button reset-button" type="button">Try Again</button>
+        </div>
+      `;
+      portsContainer.querySelector('#retry-scan-button').addEventListener('click', scanVncPorts);
+    });
   }
 
   function refreshServiceConnection() {
@@ -282,16 +387,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function applyUpdateStatus(status) {
+    updateStatus = status;
+    const view = DashboardState.updaterStatusView
+      ? DashboardState.updaterStatusView(status)
+      : { message: 'Idle', canDownload: false, canInstall: false, progress: 0, error: null, busy: false };
+    const label = document.getElementById('update-status-label');
+    const errorLabel = document.getElementById('update-error-label');
+    const progressTrack = document.getElementById('update-progress-track');
+    const progressFill = document.getElementById('update-progress-fill');
+    if (label) label.textContent = view.message;
+    if (errorLabel) {
+      errorLabel.hidden = !view.error;
+      errorLabel.textContent = view.error || '';
+    }
+    if (progressTrack && progressFill) {
+      const showProgress = view.state === 'downloading' || view.state === 'ready';
+      progressTrack.hidden = !showProgress;
+      progressFill.style.width = `${view.progress || 0}%`;
+    }
+    if (checkUpdatesButton) checkUpdatesButton.disabled = !!view.busy;
+    if (downloadUpdateButton) downloadUpdateButton.hidden = !view.canDownload;
+    if (installUpdateButton) installUpdateButton.hidden = !view.canInstall;
+    refreshHeader();
+  }
+
   if (window.api.onServiceConnection) {
     window.api.onServiceConnection((snapshot) => {
       applyServiceSnapshot(snapshot);
-      if (snapshot && snapshot.monitors) {
-        renderMonitors(snapshot.monitors);
-      }
+      if (snapshot && snapshot.monitors) renderMonitors(snapshot.monitors);
     });
   }
   if (window.api.onMonitorsUpdated) {
     window.api.onMonitorsUpdated(renderMonitors);
+  }
+  if (window.api.onUpdateStatus) {
+    window.api.onUpdateStatus(applyUpdateStatus);
   }
 
   const AUDIO_STATES = {
@@ -420,361 +551,76 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const autoRadio = document.getElementById('service-mode-auto');
+  const manualRadio = document.getElementById('service-mode-manual');
   if (autoRadio) {
     autoRadio.addEventListener('change', () => {
-      if (autoRadio.checked) {
-        window.api.startServiceDiscovery();
-      }
+      if (autoRadio.checked) window.api.startServiceDiscovery();
+    });
+  }
+  if (manualRadio) {
+    manualRadio.addEventListener('change', () => {
+      const fields = document.getElementById('service-manual-fields');
+      if (fields) fields.hidden = !manualRadio.checked;
     });
   }
 
-  // Create a reusable function for warning and error icons using SVG
-  function createSVGIcon(type) {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", "40");
-    svg.setAttribute("height", "40");
-    svg.setAttribute("viewBox", "0 0 40 40");
-    
-    if (type === 'warning') {
-      // Create warning triangle
-      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      path.setAttribute("d", "M20 5 L35 35 L5 35 Z");
-      path.setAttribute("fill", "#ffc107");
-      path.setAttribute("stroke", "#ff9800");
-      path.setAttribute("stroke-width", "2");
-      svg.appendChild(path);
-      
-      // Add exclamation mark
-      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      text.setAttribute("x", "20");
-      text.setAttribute("y", "30");
-      text.setAttribute("text-anchor", "middle");
-      text.setAttribute("fill", "white");
-      text.setAttribute("font-size", "20");
-      text.setAttribute("font-weight", "bold");
-      text.textContent = "!";
-      svg.appendChild(text);
-    } 
-    else if (type === 'error') {
-      // Create error circle
-      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      circle.setAttribute("cx", "20");
-      circle.setAttribute("cy", "20");
-      circle.setAttribute("r", "17");
-      circle.setAttribute("fill", "#dc3545");
-      svg.appendChild(circle);
-      
-      // Add X mark
-      const line1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      line1.setAttribute("x1", "12");
-      line1.setAttribute("y1", "12");
-      line1.setAttribute("x2", "28");
-      line1.setAttribute("y2", "28");
-      line1.setAttribute("stroke", "white");
-      line1.setAttribute("stroke-width", "3");
-      svg.appendChild(line1);
-      
-      const line2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      line2.setAttribute("x1", "28");
-      line2.setAttribute("y1", "12");
-      line2.setAttribute("x2", "12");
-      line2.setAttribute("y2", "28");
-      line2.setAttribute("stroke", "white");
-      line2.setAttribute("stroke-width", "3");
-      svg.appendChild(line2);
-    }
-    
-    return svg;
+  if (checkUpdatesButton) {
+    checkUpdatesButton.addEventListener('click', () => {
+      if (!window.api.checkForUpdates) return;
+      window.api.checkForUpdates().then(applyUpdateStatus).catch((err) => {
+        console.error(err);
+        showNotification('Update check failed', 'error');
+      });
+    });
+  }
+  if (downloadUpdateButton) {
+    downloadUpdateButton.addEventListener('click', () => {
+      window.api.downloadUpdate().then(applyUpdateStatus).catch((err) => {
+        console.error(err);
+        showNotification('Update download failed', 'error');
+      });
+    });
+  }
+  if (installUpdateButton) {
+    installUpdateButton.addEventListener('click', () => {
+      window.api.installUpdate();
+    });
   }
 
-  // Scan for VNC ports with enhanced UI
-  window.api.scanPortsExtended().then(ports => {
-    console.log('Available VNC ports:', ports);
-    
-    const portsContainer = document.getElementById('vnc-ports-info');
-    if (portsContainer) {
-      // Clear loading spinner
-      portsContainer.innerHTML = '';
-      
-      if (ports.length > 0) {
-        if (statusDot) {
-          statusDot.classList.add('ready');
-        }
-        
-        // Check screen size for responsive layout
-        const isSmallScreen = window.innerWidth <= 460;
-        const isMediumScreen = window.innerWidth <= 650 && window.innerWidth > 460;
-        
-        // Create table header
-        const table = document.createElement('table');
-        table.className = 'vnc-ports-table';
-        
-        // Add header row with different columns based on screen size
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        
-        let headerColumns;
-        if (isSmallScreen) {
-          // Changed columns for small screens (450x800)
-          headerColumns = ['#', 'FQDN', 'Hostname']; 
-        } else if (isMediumScreen) {
-          headerColumns = ['#', 'IP Address', 'Hostname', 'Actions'];
-        } else {
-          headerColumns = ['Screen', 'IP Address', 'Hostname', 'FQDN', 'Actions'];
-        }
-        
-        headerColumns.forEach(headerText => {
-          const th = document.createElement('th');
-          th.textContent = headerText;
-          headerRow.appendChild(th);
-        });
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-        
-        // Add data rows
-        const tbody = document.createElement('tbody');
-        ports.forEach(port => {
-          const row = document.createElement('tr');
-          
-          // Screen number
-          const screenCell = document.createElement('td');
-          screenCell.textContent = port.path.replace('/screen', '');
-          row.appendChild(screenCell);
-          
-          if (isSmallScreen) {
-            // FQDN for small screens (first column after screen number)
-            const fqdnCell = document.createElement('td');
-            const hostnameLocalValue = `${port.hostnameLocal}:${port.port}`;
-            fqdnCell.textContent = hostnameLocalValue;
-            fqdnCell.className = 'copy-value';
-            fqdnCell.title = 'Click to copy';
-            fqdnCell.addEventListener('click', () => {
-              navigator.clipboard.writeText(hostnameLocalValue);
-              showNotification(`Copied ${hostnameLocalValue} to clipboard`, 'success', 2000);
-            });
-            row.appendChild(fqdnCell);
-            
-            // Hostname for small screens (second column after screen number)
-            const hostnameCell = document.createElement('td');
-            const hostnameValue = `${port.hostname}:${port.port}`;
-            hostnameCell.textContent = hostnameValue;
-            hostnameCell.className = 'copy-value';
-            hostnameCell.title = 'Click to copy';
-            hostnameCell.addEventListener('click', () => {
-              navigator.clipboard.writeText(hostnameValue);
-              showNotification(`Copied ${hostnameValue} to clipboard`, 'success', 2000);
-            });
-            row.appendChild(hostnameCell);
-          } else {
-            // IP:Port
-            const ipCell = document.createElement('td');
-            ipCell.textContent = port.target;
-            ipCell.className = 'copy-value';
-            ipCell.title = 'Click to copy';
-            ipCell.addEventListener('click', () => {
-              navigator.clipboard.writeText(port.target);
-              showNotification(`Copied ${port.target} to clipboard`, 'success', 2000);
-            });
-            row.appendChild(ipCell);
-            
-            // Hostname:Port
-            const hostnameCell = document.createElement('td');
-            const hostnameValue = `${port.hostname}:${port.port}`;
-            hostnameCell.textContent = hostnameValue;
-            hostnameCell.className = 'copy-value';
-            hostnameCell.title = 'Click to copy';
-            hostnameCell.addEventListener('click', () => {
-              navigator.clipboard.writeText(hostnameValue);
-              showNotification(`Copied ${hostnameValue} to clipboard`, 'success', 2000);
-            });
-            row.appendChild(hostnameCell);
-            
-            // Only add FQDN column on larger screens
-            if (!isMediumScreen) {
-              // Hostname.local:Port
-              const hostnameLocalCell = document.createElement('td');
-              const hostnameLocalValue = `${port.hostnameLocal}:${port.port}`;
-              hostnameLocalCell.textContent = hostnameLocalValue;
-              hostnameLocalCell.className = 'copy-value';
-              hostnameLocalCell.title = 'Click to copy';
-              hostnameLocalCell.addEventListener('click', () => {
-                navigator.clipboard.writeText(hostnameLocalValue);
-                showNotification(`Copied ${hostnameLocalValue} to clipboard`, 'success', 2000);
-              });
-              row.appendChild(hostnameLocalCell);
-            }
-          }
-          
-          // Actions column - only add for medium and large screens
-          if (!isSmallScreen) {
-            const actionsCell = document.createElement('td');
-            const copyButton = document.createElement('button');
-            copyButton.className = 'mini-button copy-button';
-            copyButton.textContent = 'Copy';
-            copyButton.addEventListener('click', () => {
-              const valueToShare = port.hostnameLocal + ':' + port.port;
-              navigator.clipboard.writeText(valueToShare);
-              showNotification(`Copied ${valueToShare} to clipboard`, 'success', 2000);
-            });
-            actionsCell.appendChild(copyButton);
-            row.appendChild(actionsCell);
-          }
-          
-          tbody.appendChild(row);
-        });
-        
-        table.appendChild(tbody);
-        portsContainer.appendChild(table);
-        
-        // Update main connection info with both hostname types
-        updateConnectionInfo(ports[0]);
-        
-        showNotification(`Found ${ports.length} VNC connection${ports.length > 1 ? 's' : ''}`, 'success');
-      } else {
-        // No ports found
-        const noPortsMessage = document.createElement('div');
-        noPortsMessage.className = 'no-ports-message';
-        
-        // Create SVG warning icon
-        const warningIcon = createSVGIcon('warning');
-        warningIcon.classList.add('warning-icon');
-        
-        noPortsMessage.appendChild(warningIcon);
-        noPortsMessage.innerHTML += `
-          <p>No VNC ports were found on this system.</p>
-          <p>Make sure your VNC server is running and try again.</p>
-          <button id="rescan-button" class="action-button">Scan Again</button>
-        `;
-        portsContainer.appendChild(noPortsMessage);
-        
-        // Add event listener to rescan button
-        portsContainer.querySelector('#rescan-button').addEventListener('click', () => {
-          portsContainer.innerHTML = `
-            <div class="loading-spinner">
-              <div class="spinner"></div>
-              <p>Scanning for VNC ports...</p>
-            </div>
-          `;
-          
-          setTimeout(() => {
-            window.api.scanPortsExtended().then(newPorts => {
-              // Recursively call this function to update the UI
-              ports = newPorts;
-              window.api.scanPortsExtended();
-            }).catch(err => {
-              console.error('Error scanning ports:', err);
-              showNotification('Failed to scan ports', 'error');
-            });
-          }, 1000);
-        });
-        
-        showNotification('No VNC ports found', 'warning');
-      }
-    }
-  }).catch(err => {
-    console.error('Error scanning ports:', err);
-    showNotification('Failed to scan for VNC ports', 'error');
-    
-    const portsContainer = document.getElementById('vnc-ports-info');
-    if (portsContainer) {
-      // Create error message with SVG
-      portsContainer.innerHTML = '';
-      const errorMessage = document.createElement('div');
-      errorMessage.className = 'error-message';
-      
-      // Create SVG error icon
-      const errorIcon = createSVGIcon('error');
-      errorIcon.classList.add('error-icon');
-      
-      errorMessage.appendChild(errorIcon);
-      errorMessage.innerHTML += `
-        <p>Error scanning for VNC ports.</p>
-        <p class="error-details">${err.message || 'Unknown error'}</p>
-        <button id="retry-scan-button" class="action-button">Try Again</button>
-      `;
-      portsContainer.appendChild(errorMessage);
-      
-      portsContainer.querySelector('#retry-scan-button').addEventListener('click', () => {
-        window.location.reload();
-      });
-    }
-  });
-  
-  // New function to update the connection information section
-  function updateConnectionInfo(port) {
-    if (!port) return;
-    
+  window.api.getHostInfo().then((hostInfo) => {
     const ipElement = document.getElementById('ip-address');
     const hostnameElement = document.getElementById('hostname');
     const hostnameLocalElement = document.getElementById('hostname-local');
-    
-    if (ipElement) {
-      ipElement.textContent = port.target;
-    }
-    
-    if (hostnameElement) {
-      hostnameElement.textContent = `${port.hostname}:${port.port}`;
-    }
-    
-    if (hostnameLocalElement) {
-      hostnameLocalElement.textContent = `${port.hostnameLocal}:${port.port}`;
-    }
-    
-    // Also update the connection types section
-    const connectionTypesContainer = document.getElementById('connection-types');
-    if (connectionTypesContainer) {
-      connectionTypesContainer.innerHTML = '';
-      
-      // Add hostname connection
-      const hostnameConnection = document.createElement('div');
-      hostnameConnection.className = 'connection-type-item';
-      hostnameConnection.innerHTML = `
-        <span class="connection-type-label">Hostname:</span>
-        <div class="host-info-value-container">
-          <span class="host-info-value copy-value" title="Click to copy">${port.hostname}:${port.port}</span>
-          <button class="copy-button" data-value="${port.hostname}:${port.port}">Copy</button>
-        </div>
-      `;
-      connectionTypesContainer.appendChild(hostnameConnection);
-      
-      // Add local hostname connection
-      const localHostnameConnection = document.createElement('div');
-      localHostnameConnection.className = 'connection-type-item';
-      localHostnameConnection.innerHTML = `
-        <span class="connection-type-label">FQDN:</span>
-        <div class="host-info-value-container">
-          <span class="host-info-value copy-value" title="Click to copy">${port.hostnameLocal}:${port.port}</span>
-          <button class="copy-button" data-value="${port.hostnameLocal}:${port.port}">Copy</button>
-        </div>
-      `;
-      connectionTypesContainer.appendChild(localHostnameConnection);
-      
-      // Add event listeners to copy buttons
-      connectionTypesContainer.querySelectorAll('.copy-button').forEach(button => {
-        button.addEventListener('click', () => {
-          const value = button.getAttribute('data-value');
-          navigator.clipboard.writeText(value);
-          button.textContent = 'Copied!';
-          setTimeout(() => {
-            button.textContent = 'Copy';
-          }, 2000);
-          showNotification(`Copied ${value} to clipboard`, 'success', 3000);
-        });
-      });
-      
-      // Add click copy functionality to values
-      connectionTypesContainer.querySelectorAll('.copy-value').forEach(elem => {
-        elem.addEventListener('click', () => {
-          navigator.clipboard.writeText(elem.textContent);
-          showNotification(`Copied ${elem.textContent} to clipboard`, 'success', 3000);
-        });
-      });
-    }
+    if (ipElement) ipElement.textContent = hostInfo.ip;
+    if (hostnameElement) hostnameElement.textContent = hostInfo.hostname;
+    if (hostnameLocalElement) hostnameLocalElement.textContent = hostInfo.hostnameLocal;
+    showNotification('Host information detected', 'success');
+    refreshServiceConnection();
+    refreshMonitors();
+    refreshAudioStatus();
+  }).catch((err) => {
+    console.error('Error getting host information:', err);
+    showNotification('Failed to detect host information', 'error');
+  });
+
+  scanVncPorts();
+  if (window.api.getUpdateStatus) {
+    window.api.getUpdateStatus().then(applyUpdateStatus).catch(() => {});
   }
 
-  // Set current year in copyright
+  heartbeatTimer = setInterval(() => {
+    if (serviceSnapshot && DashboardState.formatTimestamp) {
+      const heartbeatLabel = document.getElementById('service-heartbeat-label');
+      if (heartbeatLabel) {
+        heartbeatLabel.textContent = DashboardState.formatTimestamp(serviceSnapshot.lastHeartbeatAt);
+      }
+    }
+  }, 5000);
+
   const yearElement = document.getElementById('current-year');
-  if (yearElement) {
-    yearElement.textContent = new Date().getFullYear();
-  }
+  if (yearElement) yearElement.textContent = new Date().getFullYear();
+
+  window.addEventListener('beforeunload', () => {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+  });
 });

@@ -5,250 +5,254 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>CLEVER KVM App</title>
+  <title>CLEVER Screencast</title>
   <link rel="stylesheet" href="assets/css/style.css">
-  <link rel="stylesheet" href="assets/css/fontawesome.min.css">
 </head>
 
 <body>
-  <div class="window-controls">
-    <div class="window-title-bar">
-      <div class="window-title">CLEVER KVM ver <span id="app-version"></span></div>
-      <div class="window-controls-container">
-        <button id="close-button" class="window-control-button" title="Close">
-          <span class="window-control-icon">&#10005;</span>
-        </button>
+  <header class="app-chrome">
+    <div class="chrome-brand">
+      <img src="assets/media/logo.png" alt="CLEVER" class="chrome-logo">
+      <div class="chrome-titles">
+        <h1>CLEVER Screencast</h1>
+        <p>KVM desktop sharing · <span id="app-version">…</span></p>
       </div>
     </div>
-  </div>
+    <div class="chrome-status" aria-live="polite">
+      <span class="badge tone-danger" id="overall-status">Disconnected</span>
+      <span class="badge tone-neutral" id="sharing-status">Idle</span>
+      <span class="badge tone-neutral" id="update-badge" hidden>Updates</span>
+    </div>
+    <div class="chrome-controls">
+      <button id="minimize-button" class="window-control-button" title="Minimize" type="button">–</button>
+      <button id="maximize-button" class="window-control-button" title="Maximize" type="button">□</button>
+      <button id="close-button" class="window-control-button close" title="Close" type="button">✕</button>
+    </div>
+  </header>
 
-  <div class="app-container">
-    <div class="header-section">
-      <div class="header-text">
-        <h1>CLEVER KVM</h1>
-        <p class="subtitle">Screencast & Desktop Sharing</p>
+  <main class="dashboard">
+    <section class="panel" id="device-panel">
+      <div class="panel-header">
+        <h2>Device</h2>
+        <span class="status-dot offline" id="status-indicator"></span>
       </div>
-    </div>
-    
-    <!-- Connection Information -->
-    <div class="host-info-card">
-      <div class="card-header">
-        <h2>Connection Info</h2>
-        <div class="connection-indicator">
-          <span>Status:</span>
-          <span class="status-dot offline" id="status-indicator"></span>
+      <dl class="meta-grid">
+        <div>
+          <dt>IP</dt>
+          <dd><span id="ip-address" class="copy-value" title="Click to copy">Checking…</span></dd>
         </div>
-      </div>
-      
-      <div class="host-info-container">
-        <div class="host-info-row">
-          <div class="host-info-item">
-            <span class="host-info-label">IP:</span>
-            <div class="host-info-value-container">
-              <span id="ip-address" class="host-info-value copy-value" title="Click to copy">Checking...</span>
-              <button class="copy-button" data-target="ip-address">Copy</button>
-            </div>
-          </div>
+        <div>
+          <dt>Host</dt>
+          <dd><span id="hostname" class="copy-value" title="Click to copy">Checking…</span></dd>
         </div>
-        <div class="host-info-row">
-          <div class="host-info-item">
-            <span class="host-info-label">Host:</span>
-            <div class="host-info-value-container">
-              <span id="hostname" class="host-info-value copy-value" title="Click to copy">Checking...</span>
-              <button class="copy-button" data-target="hostname">Copy</button>
-            </div>
-          </div>
+        <div>
+          <dt>FQDN</dt>
+          <dd><span id="hostname-local" class="copy-value" title="Click to copy">Checking…</span></dd>
         </div>
-        <div class="host-info-row">
-          <div class="host-info-item">
-            <span class="host-info-label">FQDN:</span>
-            <div class="host-info-value-container">
-              <span id="hostname-local" class="host-info-value copy-value" title="Click to copy">Checking...</span>
-              <button class="copy-button" data-target="hostname-local">Copy</button>
-            </div>
-          </div>
+        <div>
+          <dt>Device ID</dt>
+          <dd><span id="device-id" class="copy-value" title="Click to copy">—</span></dd>
         </div>
-      </div>
-    </div>
+      </dl>
+    </section>
 
-    <!-- CLEVER-Service connection -->
-    <div class="host-info-card" id="service-connection-card">
-      <div class="card-header">
+    <section class="panel" id="service-connection-card">
+      <div class="panel-header">
         <h2>CLEVER-Service</h2>
         <div class="connection-indicator">
-          <span>Status:</span>
           <span class="status-dot offline" id="service-status-dot"></span>
           <span id="service-status-label">Disconnected</span>
         </div>
       </div>
-      <div class="host-info-container">
-        <div class="host-info-row">
-          <div class="host-info-item">
-            <span class="host-info-label">Source:</span>
-            <span id="service-source-label" class="host-info-value">Not configured</span>
-          </div>
+      <dl class="meta-grid">
+        <div>
+          <dt>Source</dt>
+          <dd id="service-source-label">Not configured</dd>
         </div>
-        <div class="host-info-row">
-          <div class="host-info-item">
-            <span class="host-info-label">Server:</span>
-            <span id="service-url-label" class="host-info-value">Searching...</span>
-          </div>
+        <div>
+          <dt>Server</dt>
+          <dd id="service-url-label">Searching…</dd>
         </div>
-        <div class="settings-row service-config-row">
-          <label class="service-mode">
-            <input type="radio" name="service-mode" value="auto" id="service-mode-auto" checked>
-            Automatic discovery
-          </label>
-          <label class="service-mode">
-            <input type="radio" name="service-mode" value="manual" id="service-mode-manual">
-            Manual configuration
-          </label>
+        <div>
+          <dt>Registration</dt>
+          <dd id="service-registration-label">Not registered</dd>
         </div>
-        <div class="service-manual-fields" id="service-manual-fields">
-          <label>Protocol
-            <select id="service-protocol">
-              <option value="http">http</option>
-              <option value="https">https</option>
-            </select>
-          </label>
-          <label>Host / IP
-            <input type="text" id="service-host" placeholder="hostname or 192.168.1.10">
-          </label>
-          <label>Port
-            <input type="number" id="service-port" min="1" max="65535" value="8000">
-          </label>
-          <button id="service-save-button" class="action-button start-button" type="button">Save</button>
+        <div>
+          <dt>Last heartbeat</dt>
+          <dd id="service-heartbeat-label">Never</dd>
         </div>
-        <div class="control-buttons service-actions">
-          <button id="service-search-button" class="action-button reset-button" type="button">Search again</button>
+      </dl>
+      <div class="settings-row service-config-row">
+        <label class="service-mode">
+          <input type="radio" name="service-mode" value="auto" id="service-mode-auto" checked>
+          Automatic discovery
+        </label>
+        <label class="service-mode">
+          <input type="radio" name="service-mode" value="manual" id="service-mode-manual">
+          Manual configuration
+        </label>
+      </div>
+      <div class="service-manual-fields" id="service-manual-fields" hidden>
+        <label>Protocol
+          <select id="service-protocol">
+            <option value="http">http</option>
+            <option value="https">https</option>
+          </select>
+        </label>
+        <label>Host / IP
+          <input type="text" id="service-host" placeholder="hostname or 192.168.1.10">
+        </label>
+        <label>Port
+          <input type="number" id="service-port" min="1" max="65535" value="8000">
+        </label>
+        <button id="service-save-button" class="action-button start-button" type="button">Save</button>
+      </div>
+      <div class="control-buttons service-actions">
+        <button id="service-search-button" class="action-button reset-button" type="button">Search again</button>
+      </div>
+    </section>
+
+    <section class="panel panel-wide" id="monitors-panel">
+      <div class="panel-header">
+        <h2>Monitors</h2>
+        <span class="muted" id="monitor-count">Detecting displays…</span>
+      </div>
+      <div id="monitors-info" class="table-wrap">
+        <p class="muted">Detecting displays…</p>
+      </div>
+    </section>
+
+    <section class="panel" id="vnc-panel">
+      <div class="panel-header">
+        <h2>VNC / Screencast</h2>
+        <span class="badge tone-neutral" id="vnc-sharing-badge">Idle</span>
+      </div>
+      <dl class="meta-grid compact">
+        <div>
+          <dt>VNC port</dt>
+          <dd id="vnc-port-label">5900</dd>
+        </div>
+        <div>
+          <dt>Websockify</dt>
+          <dd id="ws-port-label">8840</dd>
+        </div>
+        <div>
+          <dt>WebSocket path</dt>
+          <dd id="ws-path-label">/screen0</dd>
+        </div>
+        <div>
+          <dt>Active source</dt>
+          <dd id="vnc-source-label">Scanning…</dd>
+        </div>
+      </dl>
+      <div id="vnc-ports-info" class="table-wrap">
+        <div class="loading-spinner">
+          <div class="spinner"></div>
+          <p>Scanning for VNC ports…</p>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Detected monitors -->
-    <div class="vnc-ports-container card">
-      <h3>Monitors</h3>
-      <div id="monitors-info" class="card-content">
-        <p>Detecting displays...</p>
-      </div>
-    </div>
-
-    <!-- Independent WebRTC audio (does not affect VNC) -->
-    <div class="host-info-card" id="audio-card">
-      <div class="card-header">
+    <section class="panel" id="audio-panel">
+      <div class="panel-header">
         <h2>Audio</h2>
         <div class="connection-indicator">
-          <span>Status:</span>
           <span class="status-dot offline" id="audio-status-dot"></span>
           <span id="audio-status-label">Disabled</span>
         </div>
       </div>
-      <div class="host-info-container">
-        <p class="audio-help">Optional WebRTC audio is independent from VNC screen streaming. Nothing is captured until a remote client connects and a control below is enabled.</p>
-        <div class="audio-controls">
-          <label class="setup">
-            <input type="checkbox" id="audio-system" class="settings-checkbox">
-            <span>System Audio</span>
-          </label>
-          <label class="setup">
-            <input type="checkbox" id="audio-microphone" class="settings-checkbox">
-            <span>Microphone</span>
-          </label>
-          <label class="setup">
-            <input type="checkbox" id="audio-speaker" class="settings-checkbox" checked>
-            <span>Speaker / Output</span>
-          </label>
-          <label class="setup">
-            <input type="checkbox" id="audio-twoway" class="settings-checkbox">
-            <span>Two-way Audio</span>
-          </label>
-        </div>
-        <div class="host-info-row">
-          <div class="host-info-item">
-            <span class="host-info-label">Transport:</span>
-            <span id="audio-transport-label" class="host-info-value">WebRTC / Opus</span>
-          </div>
-        </div>
-        <div class="host-info-row">
-          <div class="host-info-item">
-            <span class="host-info-label">Capture:</span>
-            <span id="audio-capture-label" class="host-info-value">Idle</span>
-          </div>
-        </div>
-        <div class="host-info-row">
-          <div class="host-info-item">
-            <span class="host-info-label">Capabilities:</span>
-            <span id="audio-caps-label" class="host-info-value">Detecting...</span>
-          </div>
-        </div>
-        <div id="audio-error-label" class="audio-error" hidden></div>
+      <p class="audio-help muted">Optional WebRTC audio is independent from VNC. Capture starts only when a remote client is connected and a control below is enabled.</p>
+      <div class="audio-controls settings-row">
+        <label class="setup">
+          <input type="checkbox" id="audio-system">
+          System Audio
+        </label>
+        <label class="setup">
+          <input type="checkbox" id="audio-microphone">
+          Microphone
+        </label>
+        <label class="setup">
+          <input type="checkbox" id="audio-speaker" checked>
+          Speaker / Output
+        </label>
+        <label class="setup">
+          <input type="checkbox" id="audio-twoway">
+          Two-way Audio
+        </label>
       </div>
-    </div>
+      <dl class="meta-grid compact">
+        <div>
+          <dt>Transport</dt>
+          <dd id="audio-transport-label">WebRTC / Opus</dd>
+        </div>
+        <div>
+          <dt>Capture</dt>
+          <dd id="audio-capture-label">Idle</dd>
+        </div>
+        <div>
+          <dt>Capabilities</dt>
+          <dd id="audio-caps-label">Detecting…</dd>
+        </div>
+      </dl>
+      <div id="audio-error-label" class="audio-error error-text" hidden></div>
+    </section>
 
-    <!-- Control Panel -->
-    <div class="control-panel">
+    <section class="panel panel-wide" id="management-panel">
+      <div class="panel-header">
+        <h2>Management</h2>
+      </div>
       <div class="control-buttons">
-        <button id="start-button" class="action-button start-button">
+        <button id="start-button" class="action-button start-button" type="button">
           <span class="button-icon">▶</span>
           <span class="button-text">Start</span>
         </button>
-        <button id="stop-button" class="action-button stop-button">
+        <button id="stop-button" class="action-button stop-button" type="button" disabled>
           <span class="button-icon">■</span>
           <span class="button-text">Stop</span>
         </button>
-        <button id="restart-button" class="action-button reset-button">
+        <button id="restart-button" class="action-button reset-button" type="button">
           <span class="button-icon">↻</span>
           <span class="button-text">Restart</span>
         </button>
       </div>
-    </div>
-    
-    <!-- Available VNC Connections -->
-    <div class="vnc-ports-container card">
-      <h3>Available VNC Connections</h3>
-      <div id="vnc-ports-info" class="card-content">
-        <div class="loading-spinner">
-          <div class="spinner"></div>
-          <p>Scanning for VNC ports...</p>
+      <div class="update-box">
+        <div class="update-status">
+          <span class="muted">Updates</span>
+          <strong id="update-status-label">Idle</strong>
+          <span id="update-error-label" class="error-text" hidden></span>
+        </div>
+        <div class="progress-track" id="update-progress-track" hidden>
+          <div class="progress-fill" id="update-progress-fill"></div>
+        </div>
+        <div class="control-buttons">
+          <button id="check-updates-button" class="action-button reset-button" type="button">Check for Updates</button>
+          <button id="download-update-button" class="action-button start-button" type="button" hidden>Download update</button>
+          <button id="install-update-button" class="action-button start-button" type="button" hidden>Restart and Install</button>
         </div>
       </div>
-    </div>
-
-    <!-- Settings -->
-    <div class="settings-panel card">
-      <h3>Settings</h3>
-      <div class="card-content">
-        <div class="settings-row">
-          <div class="setup">
-            <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="autostartup" id="autostartup"
-              checked>
-            <label for="autostartup">Auto startup on PC boot</label>
-          </div>
-          <div class="setup">
-            <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="autoshare" id="autoshare"
-              checked>
-            <label for="autoshare">Auto share on launch</label>
-          </div>
-        </div>
-        <p class="audio-help">Audio enable/disable is in the Audio panel above so VNC sharing is never started by an audio setting.</p>
+      <div class="settings-row">
+        <label class="setup">
+          <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="autostartup" id="autostartup">
+          Auto startup on PC boot
+        </label>
+        <label class="setup">
+          <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="autoshare" id="autoshare">
+          Auto share on launch
+        </label>
       </div>
-    </div>
+    </section>
+  </main>
 
-    <div class="notification-area" id="notification-area">
-      <!-- Notifications will appear here -->
-    </div>
-  </div>
-
-  <div class="copyright">
+  <footer class="copyright">
     <div class="clt-logo">
-      <img src="assets/media/logo.png" alt="Company Logo" style="height: 40px;">
+      <img src="assets/media/logo.png" alt="Closed-loop Technology">
     </div>
     <div class="copyright-desc">
-      © 2000-<span id="current-year"></span> Closed-loop Technology<br>
-      All rights reserved.
+      © 2000-<span id="current-year"></span> Closed-loop Technology · All rights reserved.
     </div>
-  </div>
+  </footer>
 
+  <div class="notification-area" id="notification-area"></div>
   <script src="renderer.js"></script>
 </body>
 

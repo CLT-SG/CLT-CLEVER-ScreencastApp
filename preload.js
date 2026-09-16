@@ -7,6 +7,8 @@ const os = require('os')
 // Load config safely
 const config = require(path.join(__dirname, 'config.js'))
 
+const dashboardState = require(path.join(__dirname, 'lib/dashboard-state'))
+
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('api', {
@@ -45,7 +47,8 @@ contextBridge.exposeInMainWorld('api', {
     systemAudio: config.systemAudio,
     microphone: config.microphone,
     speakerOutput: config.speakerOutput,
-    twoWayAudio: config.twoWayAudio
+    twoWayAudio: config.twoWayAudio,
+    autoshare: config.autoshare
   },
   
   // Application version (will be set by main process)
@@ -67,6 +70,10 @@ contextBridge.exposeInMainWorld('api', {
   getMonitors: () => ipcRenderer.invoke('get-monitors'),
   getAudioStatus: () => ipcRenderer.invoke('get-audio-status'),
   setAudioConfig: (partial) => ipcRenderer.invoke('set-audio-config', partial),
+  getUpdateStatus: () => ipcRenderer.invoke('updater-status'),
+  checkForUpdates: () => ipcRenderer.invoke('updater-check'),
+  downloadUpdate: () => ipcRenderer.invoke('updater-download'),
+  installUpdate: () => ipcRenderer.invoke('updater-install'),
 
   // Tray control
   updateTrayStatus: (status) => ipcRenderer.invoke('update-tray-status', status),
@@ -96,6 +103,21 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.removeAllListeners('audio-status');
     };
   },
+  onUpdateStatus: (callback) => {
+    ipcRenderer.on('updater-status', (_, status) => callback(status));
+    return () => {
+      ipcRenderer.removeAllListeners('updater-status');
+    };
+  },
+})
+
+contextBridge.exposeInMainWorld('dashboardState', {
+  connectionStatusView: dashboardState.connectionStatusView,
+  updaterStatusView: dashboardState.updaterStatusView,
+  overallStatusView: dashboardState.overallStatusView,
+  formatTimestamp: dashboardState.formatTimestamp,
+  vncView: dashboardState.vncView,
+  monitorRows: dashboardState.monitorRows
 })
 
 // Log preload execution

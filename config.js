@@ -10,11 +10,11 @@ exports.autoshare = true
 
 // Window configuration
 exports.window = {
-  width: 450,         // Default window width in pixels
-  height: 800,         // Default window height in pixels
-  minWidth: 800,       // Minimum window width
-  minHeight: 600,      // Minimum window height
-  resizable: false     // Whether window can be resized
+  width: 1180,         // Default window width in pixels
+  height: 760,         // Default window height in pixels
+  minWidth: 1024,      // Minimum window width
+  minHeight: 700,      // Minimum window height
+  resizable: true      // Whether window can be resized
 }
 
 // Connection settings
@@ -41,8 +41,8 @@ exports.cleverService = {
 // Appearance settings
 exports.appearance = {
   theme: 'dark',       // UI theme ('dark' or 'light')
-  showSplash: true,    // Show splash screen on startup
-  splashDuration: 5000 // Duration to show splash screen in milliseconds
+  showSplash: false,   // Keep the dashboard visible after launch
+  splashDuration: 5000 // Duration used only when showSplash is true
 }
 
 // Debug and logging settings
