@@ -124,14 +124,14 @@
 
     <section class="panel" id="vnc-panel">
       <div class="panel-header">
-        <h2>VNC / Screencast</h2>
+        <h2>Screencast</h2>
         <span class="badge tone-neutral" id="vnc-sharing-badge">Idle</span>
       </div>
       <dl class="meta-grid compact">
-        <div>
+        <!--<div>
           <dt>VNC port</dt>
           <dd id="vnc-port-label">5900</dd>
-        </div>
+        </div>-->
         <div>
           <dt>Websockify</dt>
           <dd id="ws-port-label">8840</dd>
@@ -148,7 +148,7 @@
       <div id="vnc-ports-info" class="table-wrap">
         <div class="loading-spinner">
           <div class="spinner"></div>
-          <p>Scanning for VNC ports…</p>
+          <p>Scanning for monitors...</p>
         </div>
       </div>
     </section>
@@ -161,10 +161,10 @@
           <span id="audio-status-label">Disabled</span>
         </div>
       </div>
-      <p class="audio-help muted">Optional WebRTC audio is independent from VNC. Capture starts only when a remote client is connected and a control below is enabled.</p>
+      <!--<p class="audio-help muted">Optional WebRTC audio is independent from VNC. Capture starts only when a remote client is connected and a control below is enabled.</p>-->
       <div class="audio-controls settings-row">
         <label class="setup">
-          <input type="checkbox" id="audio-system">
+          <input type="checkbox" id="audio-system" checked>
           System Audio
         </label>
         <label class="setup">
@@ -172,7 +172,7 @@
           Microphone
         </label>
         <label class="setup">
-          <input type="checkbox" id="audio-speaker" checked>
+          <input type="checkbox" id="audio-speaker">
           Speaker / Output
         </label>
         <label class="setup">
