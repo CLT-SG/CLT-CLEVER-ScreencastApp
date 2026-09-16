@@ -28,6 +28,8 @@ const datelog = moment().format('YYYY-MM-DD')
 const config = require('./config')
 const { ConnectionManager } = require('./lib/connection-manager')
 const { mdnsHostname } = require('./lib/host-names')
+const { AudioBridge } = require('./lib/audio-bridge')
+const { normalizeAudioConfig, configLine } = require('./lib/audio-config')
 const { createUpdater } = require('./lib/updater')
 
 // Configure logging
@@ -80,6 +82,8 @@ let appIcon = null
 let autoreload
 let isSharing = false // Track sharing state
 let connectionManager = null
+let audioBridge = null
+let audioConfig = normalizeAudioConfig(config)
 let updater = null
 
 const vncport = (process.platform == 'linux') ? '5900' : '5900'
@@ -214,6 +218,8 @@ try {
     // HTTPS certificate settings
     app.commandLine.appendSwitch('ignore-certificate-errors', 'true')
     app.commandLine.appendSwitch("disable-http-cache")
+    app.commandLine.appendSwitch('enable-usermedia-screen-capturing')
+    app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
     // Increase memory size
     const totalRAM = os.totalmem() / (1024 * 1024)
@@ -352,11 +358,27 @@ try {
               }
             },
             {
-              label: 'Enable Audio',
+              label: 'System Audio',
               type: 'checkbox',
-              checked: config.audio,
+              checked: audioConfig.systemAudio,
               click: (item) => {
-                replaceConfig('audio', `exports.audio = ${item.checked}`);
+                applyAudioSetting('systemAudio', item.checked)
+              }
+            },
+            {
+              label: 'Microphone',
+              type: 'checkbox',
+              checked: audioConfig.microphone,
+              click: (item) => {
+                applyAudioSetting('microphone', item.checked)
+              }
+            },
+            {
+              label: 'Two-way Audio',
+              type: 'checkbox',
+              checked: audioConfig.twoWayAudio,
+              click: (item) => {
+                applyAudioSetting('twoWayAudio', item.checked)
               }
             }
           ]
@@ -569,6 +591,29 @@ try {
         return connectionManager ? connectionManager.monitors : []
       })
 
+      ipcMain.handle('get-audio-status', () => {
+        return audioBridge ? audioBridge.snapshot() : {
+          state: audioConfig.systemAudio || audioConfig.microphone || audioConfig.twoWayAudio ? 'enabled' : 'disabled',
+          config: audioConfig,
+          capturing: { systemAudio: false, microphone: false },
+          clients: 0
+        }
+      })
+
+      ipcMain.handle('set-audio-config', (_event, partial) => {
+        return applyAudioSetting(null, null, partial)
+      })
+
+      ipcMain.on('audio-engine-ready', () => {
+        if (audioBridge) audioBridge.handleEngineIpc('audio-engine-ready')
+      })
+      ipcMain.on('audio-engine-message', (_event, payload) => {
+        if (audioBridge) audioBridge.handleEngineIpc('audio-engine-message', payload)
+      })
+      ipcMain.on('audio-engine-log', (_event, payload) => {
+        if (audioBridge) audioBridge.handleEngineIpc('audio-engine-log', payload)
+      })
+
       startUpdater()
 
       // Set tray context menu
@@ -635,6 +680,9 @@ try {
       })
 
       app.on('before-quit', () => {
+        if (audioBridge) {
+          audioBridge.stop()
+        }
         if (connectionManager) {
           connectionManager.stop()
         }
@@ -716,17 +764,84 @@ async function checkVncAndOpenWindow() {
   }
 }
 
+function replaceExport(name, value) {
+  try {
+    const configPath = path.join(__dirname, 'config.js')
+    let data = fs.readFileSync(configPath, 'utf8')
+    const line = configLine(name, value)
+    const re = new RegExp(`^exports\\.${name}\\s*=.*$`, 'm')
+    if (re.test(data)) {
+      data = data.replace(re, line)
+    } else {
+      data += (data.endsWith('\n') ? '' : '\n') + line + '\n'
+    }
+    fs.writeFileSync(configPath, data, 'utf8')
+    log.info(`Config updated: ${line}`)
+  } catch (err) {
+    log.error(`Error updating config: ${err}`)
+  }
+}
+
+function applyAudioSetting(name, value, partial) {
+  const next = partial || (name ? { [name]: value } : {})
+  audioConfig = normalizeAudioConfig(Object.assign({}, audioConfig, next))
+  if (Object.prototype.hasOwnProperty.call(next, 'systemAudio') || name === 'systemAudio') {
+    audioConfig.audio = !!audioConfig.systemAudio
+    replaceExport('audio', audioConfig.audio)
+    replaceExport('systemAudio', audioConfig.systemAudio)
+  }
+  ;['microphone', 'speakerOutput', 'twoWayAudio'].forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(next, key) || name === key) {
+      replaceExport(key, audioConfig[key])
+    }
+  })
+  if (audioBridge) {
+    audioBridge.applyConfig(audioConfig)
+  }
+  if (connectionManager && connectionManager.target && connectionManager.state === 'connected') {
+    connectionManager.register('online').catch((err) => {
+      log.warn(`Failed to sync audio capabilities: ${err.message}`)
+    })
+  }
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('audio-status', audioBridge ? audioBridge.snapshot() : { state: 'disabled', config: audioConfig })
+  }
+  return audioBridge ? audioBridge.snapshot() : { state: 'disabled', config: audioConfig }
+}
+
+function startAudioBridge() {
+  if (audioBridge) {
+    return
+  }
+  audioBridge = new AudioBridge({
+    server,
+    logger: log,
+    getConfig: () => audioConfig,
+    wsPort: config.server?.port || 8840,
+    onStatus: (snapshot) => {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('audio-status', snapshot)
+      }
+    }
+  })
+  audioBridge.start()
+  log.info('[audio] independent WebRTC signaling attached to /audio')
+}
+
 function startConnectionManager() {
   if (connectionManager) {
     return
   }
+  startAudioBridge()
   connectionManager = new ConnectionManager({
     userDataDir: app.getPath('userData'),
     logger: log,
     screenApi: screen,
     getHostInfo,
     getAppVersion: () => app.getVersion(),
-    getAudioEnabled: () => !!config.audio,
+    getAudioEnabled: () => !!audioConfig.systemAudio,
+    getAudioConfig: () => audioConfig,
+    getAudioSnapshot: () => audioBridge ? audioBridge.snapshot() : null,
     getSharing: () => isSharing,
     wsPort: config.server?.port || 8840,
     vncPort: parseInt(vncport, 10) || 5900

@@ -173,7 +173,7 @@ body {
 .dashboard {
   display: grid;
   grid-template-columns: 1.05fr 1.2fr;
-  grid-template-rows: auto minmax(132px, 0.9fr) minmax(0, 1.25fr);
+  grid-template-rows: auto minmax(110px, 0.7fr) minmax(0, 1fr) auto;
   gap: 10px;
   padding: 10px 12px;
   min-height: 0;
@@ -359,6 +359,21 @@ body {
   opacity: 0.45;
   cursor: not-allowed;
   filter: none;
+}
+
+.audio-help {
+  margin: 0;
+  font-size: 12px;
+}
+
+.audio-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+#audio-panel .meta-grid dd {
+  white-space: normal;
 }
 
 [hidden] {

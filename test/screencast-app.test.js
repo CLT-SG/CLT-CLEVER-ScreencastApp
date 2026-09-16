@@ -44,13 +44,14 @@ test('detectMonitors maps electron displays', () => {
 })
 
 test('capabilities only include supported features', () => {
-  const caps = getCapabilities({ audio: false, monitorCount: 2 })
+  const caps = getCapabilities({ audio: false, monitorCount: 2, platform: 'linux' })
   assert.equal(caps.multiMonitor, true)
   assert.equal(caps.monitorSelection, true)
   assert.equal(caps.screenCrop, true)
   assert.equal(caps.vnc.viewOnly, true)
   assert.equal(caps.vnc.reconnect, true)
   assert.equal(caps.vnc.audio, false)
+  assert.equal(caps.webrtc_audio, true)
   assert.equal(caps.display.individualMonitorCapture, true)
   assert.equal(Object.prototype.hasOwnProperty.call(caps.vnc, 'encodings'), false)
 })

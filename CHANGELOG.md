@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Electron Updater with Check for Updates, automatic check/download, and Restart and Install
 - GitHub Releases as the update provider (`CLT-SG/CLT-CLEVER-ScreencastApp`)
 - GitHub Actions CI and Windows/Linux/macOS release workflow
-- Compact professional dashboard for connection, monitors, VNC, and management
+- Compact professional dashboard for connection, monitors, VNC, audio, and management
+- Optional independent WebRTC system audio and microphone (off by default; see docs/AUDIO.md)
 - Dashboard last-heartbeat, registration, device ID, and update status from existing services
 - Deployment, updater, and release documentation
 

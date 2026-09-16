@@ -8,11 +8,12 @@ Electron desktop application for CLEVER Screencast KVM: local VNC/screencast pub
 - Stable device ID, hostname, FQDN (`.local`), and IP reporting
 - Monitor detection and live layout sync (name, primary, resolution, position, size)
 - VNC port scan (`5900`–`5905`) and websockify/WebSocket publishing
-- Auto-start, auto-share, audio, tray, and auto-restart settings
+- Optional WebRTC system audio and microphone (independent from VNC; off by default)
+- Auto-start, auto-share, tray, and auto-restart settings
 - Electron Updater from GitHub Releases (Check for Updates + automatic check/download)
 - Windows, Linux, and macOS packaged builds via GitHub Actions
 
-The dashboard **displays** the existing connection, monitor, and VNC services. It does not replace or duplicate CLEVER-Service or CLEVER-node protocols.
+The dashboard **displays** the existing connection, monitor, VNC, and audio services. It does not replace or duplicate CLEVER-Service or CLEVER-node protocols.
 
 ## Connection options
 
@@ -34,6 +35,7 @@ Download the latest Windows, Linux, or macOS package from the GitHub Releases pa
 | Topic | File |
 | --- | --- |
 | Project setup and architecture | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |
+| Optional WebRTC audio | [docs/AUDIO.md](docs/AUDIO.md) |
 | Electron Updater | [docs/UPDATES.md](docs/UPDATES.md) |
 | Versioning, GitHub Actions, GitHub Releases | [docs/RELEASE.md](docs/RELEASE.md) |
 | Test plan | [docs/TESTING.md](docs/TESTING.md) |
@@ -47,16 +49,17 @@ npm test
 ## Project structure
 
 - `index.js` — Electron main process
-- `lib/` — CLEVER-Service connection, discovery, registration, monitors, updater
+- `lib/` — CLEVER-Service connection, discovery, registration, monitors, updater, WebRTC audio
 - `src/index.html` / `src/renderer.js` / `src/assets/css/style.css` — dashboard UI
+- `src/audio-engine.js` — hidden Chromium capture/encode engine
 - `preload.js` — context-isolated IPC bridge
-- `websockify.js` / `server.js` — WebSocket-to-VNC bridge
+- `websockify.js` / `server.js` — WebSocket-to-VNC bridge (audio signaling shares the HTTPS port on `/audio`)
 - `.github/workflows/` — CI and multi-platform release
 
 ## Troubleshooting
 
 - **VNC connection issues**: ensure a VNC server is running. TightVNC: https://www.tightvnc.com/download.php
-- **Audio not working**: enable audio in the dashboard settings (writes `config.js`)
+- **Audio not working**: audio is off by default. Enable System Audio or Microphone in the Audio panel; see [docs/AUDIO.md](docs/AUDIO.md). Enabling audio does not start VNC.
 - **Update failed**: expected for `npm start` and when no GitHub Release exists. The rest of the app keeps running.
 
 ## Changelog

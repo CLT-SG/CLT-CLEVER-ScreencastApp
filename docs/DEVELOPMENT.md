@@ -45,7 +45,8 @@ Runtime settings live in [`config.js`](../config.js):
 | `server.port` | HTTPS / websockify port (`8840`) |
 | `server.scanPorts` | VNC ports to probe (`5900`–`5905`) |
 | `cleverService` | Discovery UDP port and default HTTP port. Host/IP are **never** hardcoded |
-| `autostartup` / `autoshare` / `audio` | Tray and dashboard checkboxes |
+| `autostartup` / `autoshare` | Tray and dashboard checkboxes |
+| `audio` / `systemAudio` / `microphone` / `speakerOutput` / `twoWayAudio` | Independent WebRTC audio (dashboard Audio panel; off by default) |
 | `autorestart` | Cache-clear interval |
 
 CLEVER-Service connection mode (automatic discovery vs manual host/port) is stored in Electron `userData` as `clever-service.json`. The stable device id is stored as `device-id.json` in the same directory.
@@ -62,9 +63,11 @@ The dashboard **consumes** existing modules. It does not open a second registrat
 | `lib/registration.js` | `/api/screencast-app/*` HTTP API |
 | `lib/monitors.js` | Display detection |
 | `lib/updater.js` | Electron Updater (isolated from the modules above) |
+| `lib/audio-bridge.js` | Independent WebRTC signaling on `/audio` (does not share VNC/RFB) |
 | `lib/dashboard-state.js` | Pure view-model mapping for the dashboard |
 | `preload.js` | Context-isolated IPC bridge |
 | `src/renderer.js` | Dashboard UI |
+| `src/audio-engine.js` | Hidden Chromium capture/encode engine |
 
 ## Logs
 
@@ -72,6 +75,7 @@ Logs are written to `~/clevervnc-log/YYYY-MM-DD.log` via `electron-log`. Update 
 
 ## Related documentation
 
+- [Optional WebRTC audio](./AUDIO.md)
 - [Electron Updater](./UPDATES.md)
 - [GitHub Actions and GitHub Releases](./RELEASE.md)
 - [Testing](./TESTING.md)

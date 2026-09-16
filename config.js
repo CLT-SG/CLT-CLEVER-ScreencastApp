@@ -2,12 +2,16 @@ exports.pcname = "DESKTOP"
 exports.autorestart = 1800000
 exports.autostartup = true
 exports.audio = true
+exports.systemAudio = true
+exports.microphone = false
+exports.speakerOutput = true
+exports.twoWayAudio = false
 exports.autoshare = true
 
 // Window configuration
 exports.window = {
   width: 1180,         // Default window width in pixels
-  height: 760,         // Default window height in pixels
+  height: 900,         // Default window height in pixels
   minWidth: 1024,      // Minimum window width
   minHeight: 700,      // Minimum window height
   resizable: true      // Whether window can be resized

@@ -124,14 +124,14 @@
 
     <section class="panel" id="vnc-panel">
       <div class="panel-header">
-        <h2>VNC / Screencast</h2>
+        <h2>Screencast</h2>
         <span class="badge tone-neutral" id="vnc-sharing-badge">Idle</span>
       </div>
       <dl class="meta-grid compact">
-        <div>
+        <!--<div>
           <dt>VNC port</dt>
           <dd id="vnc-port-label">5900</dd>
-        </div>
+        </div>-->
         <div>
           <dt>Websockify</dt>
           <dd id="ws-port-label">8840</dd>
@@ -148,12 +148,56 @@
       <div id="vnc-ports-info" class="table-wrap">
         <div class="loading-spinner">
           <div class="spinner"></div>
-          <p>Scanning for VNC ports…</p>
+          <p>Scanning for monitors...</p>
         </div>
       </div>
     </section>
 
-    <section class="panel" id="management-panel">
+    <section class="panel" id="audio-panel">
+      <div class="panel-header">
+        <h2>Audio</h2>
+        <div class="connection-indicator">
+          <span class="status-dot offline" id="audio-status-dot"></span>
+          <span id="audio-status-label">Disabled</span>
+        </div>
+      </div>
+      <!--<p class="audio-help muted">Optional WebRTC audio is independent from VNC. Capture starts only when a remote client is connected and a control below is enabled.</p>-->
+      <div class="audio-controls settings-row">
+        <label class="setup">
+          <input type="checkbox" id="audio-system" checked>
+          System Audio
+        </label>
+        <label class="setup">
+          <input type="checkbox" id="audio-microphone">
+          Microphone
+        </label>
+        <label class="setup">
+          <input type="checkbox" id="audio-speaker">
+          Speaker / Output
+        </label>
+        <label class="setup">
+          <input type="checkbox" id="audio-twoway">
+          Two-way Audio
+        </label>
+      </div>
+      <dl class="meta-grid compact">
+        <div>
+          <dt>Transport</dt>
+          <dd id="audio-transport-label">WebRTC / Opus</dd>
+        </div>
+        <div>
+          <dt>Capture</dt>
+          <dd id="audio-capture-label">Idle</dd>
+        </div>
+        <div>
+          <dt>Capabilities</dt>
+          <dd id="audio-caps-label">Detecting…</dd>
+        </div>
+      </dl>
+      <div id="audio-error-label" class="audio-error error-text" hidden></div>
+    </section>
+
+    <section class="panel panel-wide" id="management-panel">
       <div class="panel-header">
         <h2>Management</h2>
       </div>
@@ -194,10 +238,6 @@
         <label class="setup">
           <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="autoshare" id="autoshare">
           Auto share on launch
-        </label>
-        <label class="setup">
-          <input type="checkbox" class="setup-chkbx settings-checkbox" data-setting="audio" id="audio">
-          Enable audio
         </label>
       </div>
     </section>
