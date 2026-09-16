@@ -82,7 +82,7 @@ test('discovery announcement parsing ignores other UDP traffic', () => {
 })
 
 test('discovery prefers the UDP source IP over a loopback announcement', () => {
-  const { pickReachableHost, serverKey, listLanInterfaces, directedBroadcast, isUsableLanIpv4, isVirtualInterfaceName } = require('../lib/discovery')
+  const { pickReachableHost, serverKey, listLanInterfaces, directedBroadcast, isUsableLanIpv4, isVirtualInterfaceName, subnetHostAddresses, shouldAcceptDiscoveredHost } = require('../lib/discovery')
   const rewritten = parseAnnouncement(Buffer.from(JSON.stringify(buildAnnounce({
     hostname: 'clever-host',
     ip: '127.0.0.1',
@@ -115,6 +115,31 @@ test('discovery prefers the UDP source IP over a loopback announcement', () => {
     serverKey({ hostname: 'clever-a', port: 8000, ip: '192.168.1.44' }),
     serverKey({ hostname: 'CLEVER-A', port: 8000, ip: '10.0.0.8' })
   )
+  const subnet = subnetHostAddresses({ address: '192.168.1.77', prefix: 24 })
+  assert.equal(subnet.length, 254)
+  assert.equal(subnet[0], '192.168.1.1')
+  assert.equal(subnet.indexOf('192.168.1.44') !== -1, true)
+  assert.equal(shouldAcceptDiscoveredHost('192.168.1.44'), true)
+  assert.equal(shouldAcceptDiscoveredHost('127.0.1.1'), false)
+  assert.equal(shouldAcceptDiscoveredHost('127.0.1.1', '127.0.1.1'), true)
+})
+
+test('http discovery maps the scanned LAN address not a loopback advertisement', () => {
+  const { isCleverDiscoverBody, serverFromHttpBody, httpScanTargets } = require('../lib/http-discovery')
+  assert.equal(isCleverDiscoverBody({ type: 'clever-service', hostname: 'svc', port: 80 }), true)
+  assert.equal(isCleverDiscoverBody({ status: 'ok' }), false)
+  const mapped = serverFromHttpBody({
+    type: 'clever-service',
+    hostname: 'clever-host',
+    ip: '127.0.1.1',
+    port: 8000
+  }, '192.168.1.44', 80, 'http')
+  assert.equal(mapped.host, '192.168.1.44')
+  assert.equal(mapped.port, 80)
+  assert.equal(mapped.advertisedIp, '127.0.1.1')
+  const targets = httpScanTargets(['192.168.1.44'], [80, 8000])
+  assert.equal(targets.length, 2)
+  assert.equal(targets[0].port, 80)
 })
 
 test('discovery collects multiple servers and ignores duplicates', () => {
@@ -150,6 +175,7 @@ test('discovery round accepts a unicast announcement and then stops', async () =
     timeoutMs: 400,
     retryIntervalMs: 5000,
     fallbackAddresses: ['127.0.0.1'],
+    httpScan: false,
     onFound: (server) => found.push(server)
   })
   discovery.start()

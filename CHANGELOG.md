@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Discovery timeout, retry/backoff, network-change rediscovery, and Start / Stop / Refresh controls
 - Per-server Register, Unregister, and Reconnect actions
 - LAN interface filtering and per-interface UDP probes
+- Unicast UDP /24 probe and HTTP `/api/screencast-app/discover` scan on ports 80 and 8000 when broadcast is blocked
 - Discovery documentation (`docs/DISCOVERY.md`) including Windows/Linux/macOS firewall notes
 
 ### Changed

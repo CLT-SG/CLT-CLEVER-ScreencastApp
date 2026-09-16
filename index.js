@@ -1043,7 +1043,8 @@ function startConnectionManager() {
       timeoutMs: config.cleverService?.discoveryTimeoutMs,
       retryIntervalMs: config.cleverService?.retryIntervalMs,
       maxRetryIntervalMs: config.cleverService?.maxRetryIntervalMs,
-      fallbackAddresses: config.cleverService?.fallbackAddresses
+      fallbackAddresses: config.cleverService?.fallbackAddresses,
+      httpPorts: config.cleverService?.httpPorts
     }
   })
   connectionManager.on('status', (snapshot) => {

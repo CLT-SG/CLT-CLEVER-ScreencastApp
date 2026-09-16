@@ -18,6 +18,12 @@ Additional issues that made remote discovery unreliable:
 
 The client now prefers the UDP source IPv4 when it is a real LAN address, sends probes from each selected LAN interface, listens on UDP 8842 when possible, and keeps collecting servers for the whole discovery window instead of stopping at the first reply.
 
+UDP broadcast is still not enough on many LANs: Wi-Fi APs and host firewalls often drop `255.255.255.255` / directed broadcast while TCP 80 remains open. ScreencastApp therefore also:
+
+1. Sends **unicast** UDP probes to each host on the local `/24`.
+2. HTTP-scans the same hosts on ports **80** and **8000** using the existing `GET /api/screencast-app/discover` API (the path nmap proves is reachable at `192.168.1.44`).
+3. Ignores persisted `lastDiscovered` values in `127.0.0.0/8` (Ubuntu’s `127.0.1.1` hostname mapping) so it does not reconnect to loopback on the Screencast PC.
+
 ## Lifecycle
 
 ```
@@ -25,7 +31,7 @@ Starting discovery
       ↓
 Search active LAN interfaces (Ethernet / Wi-Fi; skip loopback and virtual NICs)
       ↓
-Send UDP probes (255.255.255.255, subnet broadcast, optional 127.0.0.1 fallback)
+Send UDP probes (broadcast + unicast /24) and HTTP GET /api/screencast-app/discover on ports 80 and 8000
       ↓
 Wait for server responses (configurable timeout, default 4s)
       ↓
@@ -50,6 +56,7 @@ Network interface changes trigger an immediate rediscovery round.
 | `retryIntervalMs` | `8000` | Delay before the next round |
 | `maxRetryIntervalMs` | `30000` | Backoff ceiling |
 | `fallbackAddresses` | `['127.0.0.1']` | Extra unicast probe targets (local service only) |
+| `httpPorts` | `[80, 8000]` | HTTP `/api/screencast-app/discover` scan ports |
 
 Host/IP of CLEVER-Service is never hardcoded. Manual host/port still uses the dashboard **Manual configuration** fields.
 
