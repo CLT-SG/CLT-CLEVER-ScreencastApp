@@ -35,7 +35,11 @@ exports.server = {
 exports.cleverService = {
   discoveryPort: 8842,
   defaultPort: 8000,
-  defaultProtocol: 'http'
+  defaultProtocol: 'http',
+  discoveryTimeoutMs: 4000,
+  retryIntervalMs: 8000,
+  maxRetryIntervalMs: 30000,
+  fallbackAddresses: ['127.0.0.1']
 }
 
 // Appearance settings

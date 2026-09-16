@@ -44,7 +44,7 @@ Runtime settings live in [`config.js`](../config.js):
 | `window` | Dashboard size (`1180×760` by default, resizable) |
 | `server.port` | HTTPS / websockify port (`8840`) |
 | `server.scanPorts` | VNC ports to probe (`5900`–`5905`) |
-| `cleverService` | Discovery UDP port and default HTTP port. Host/IP are **never** hardcoded |
+| `cleverService` | Discovery UDP port, default HTTP port, discovery timeout/retry. Host/IP are **never** hardcoded |
 | `autostartup` / `autoshare` | Tray and dashboard checkboxes |
 | `audio` / `systemAudio` / `microphone` / `speakerOutput` / `twoWayAudio` | Independent WebRTC audio (dashboard Audio panel; off by default) |
 | `autorestart` | Cache-clear interval |
@@ -59,7 +59,8 @@ The dashboard **consumes** existing modules. It does not open a second registrat
 | --- | --- |
 | `index.js` | Electron main process, window, tray, IPC |
 | `lib/connection-manager.js` | Discovery, registration, heartbeat, reconnect, monitor sync |
-| `lib/discovery.js` | UDP CLEVER-Service discovery |
+| `lib/discovery.js` | UDP CLEVER-Service discovery (LAN interfaces, timeout/retry, multi-server) |
+| `lib/server-session.js` | Per-server probe, registration, heartbeat, reconnect |
 | `lib/registration.js` | `/api/screencast-app/*` HTTP API |
 | `lib/monitors.js` | Display detection |
 | `lib/updater.js` | Electron Updater (isolated from the modules above) |
@@ -76,6 +77,7 @@ Logs are written to `~/clevervnc-log/YYYY-MM-DD.log` via `electron-log`. Update 
 ## Related documentation
 
 - [Optional WebRTC audio](./AUDIO.md)
+- [LAN discovery](./DISCOVERY.md)
 - [Electron Updater](./UPDATES.md)
 - [GitHub Actions and GitHub Releases](./RELEASE.md)
 - [Testing](./TESTING.md)

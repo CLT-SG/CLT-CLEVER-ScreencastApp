@@ -333,6 +333,38 @@ img.asset-missing {
   padding: 6px 8px;
 }
 
+.server-list {
+  max-height: 180px;
+}
+
+.server-list td {
+  white-space: normal;
+}
+
+.server-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.status-dot.registered {
+  background: var(--success);
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+}
+
+.status-dot.unavailable,
+.status-dot.rejected,
+.status-dot.error {
+  background: var(--danger);
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
+}
+
+.status-dot.discovered,
+.status-dot.connecting {
+  background: var(--warning);
+  box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.15);
+}
+
 .control-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -419,6 +451,10 @@ img.asset-missing {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   background: rgba(255, 255, 255, 0.03);
+}
+
+.dashboard-table td .muted {
+  white-space: nowrap;
 }
 
 .dashboard-table tr.primary td:first-child {

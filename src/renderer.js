@@ -224,6 +224,14 @@ document.addEventListener('DOMContentLoaded', () => {
         ? DashboardState.formatTimestamp(view.lastHeartbeatAt)
         : view.lastHeartbeatLabel;
     }
+    const discovery = view.discovery || {};
+    const discoveryEnabledLabel = document.getElementById('service-discovery-enabled-label');
+    const discoveryStateLabel = document.getElementById('service-discovery-state-label');
+    const discoveryCountLabel = document.getElementById('service-discovery-count-label');
+    if (discoveryEnabledLabel) discoveryEnabledLabel.textContent = discovery.enabledLabel || (discovery.enabled ? 'Enabled' : 'Disabled');
+    if (discoveryStateLabel) discoveryStateLabel.textContent = discovery.stateLabel || 'Stopped';
+    if (discoveryCountLabel) discoveryCountLabel.textContent = discovery.countLabel || '0 servers';
+    renderDiscoveredServers(view.servers || [], discovery);
     if (deviceIdLabel && view.deviceId) deviceIdLabel.textContent = view.deviceId;
     if (snapshot && snapshot.config) {
       if (autoRadio) autoRadio.checked = snapshot.config.mode !== 'manual';
@@ -237,6 +245,74 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     applyVncInfo();
     refreshHeader();
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderDiscoveredServers(servers, discovery) {
+    const container = document.getElementById('service-servers-info');
+    if (!container) return;
+    const rows = servers || [];
+    if (!rows.length) {
+      container.innerHTML = `<p class="muted" id="service-servers-empty">${escapeHtml((discovery && discovery.message) || 'No CLEVER-Service servers discovered')}</p>`;
+      return;
+    }
+    container.innerHTML = `
+      <table class="dashboard-table">
+        <thead>
+          <tr>
+            <th>Server</th>
+            <th>Status</th>
+            <th>Last communication</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((server) => `
+            <tr data-server-id="${escapeHtml(server.id)}">
+              <td title="${escapeHtml(server.serverId)}">
+                <strong>${escapeHtml(server.hostname)}</strong>
+                <div class="muted">${escapeHtml(server.ip)}:${escapeHtml(server.port)}</div>
+              </td>
+              <td>
+                <span class="status-dot ${escapeHtml(server.state)}"></span>
+                ${escapeHtml(server.statusLabel)}
+              </td>
+              <td>${escapeHtml(server.lastHeartbeatLabel !== 'Never' ? server.lastHeartbeatLabel : server.lastSeenLabel)}</td>
+              <td>
+                <div class="server-actions">
+                  <button class="mini-button" data-action="register" data-server-id="${escapeHtml(server.id)}" type="button">Register</button>
+                  <button class="mini-button" data-action="unregister" data-server-id="${escapeHtml(server.id)}" type="button">Unregister</button>
+                  <button class="mini-button" data-action="reconnect" data-server-id="${escapeHtml(server.id)}" type="button">Reconnect</button>
+                </div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+    container.querySelectorAll('button[data-action]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const action = button.getAttribute('data-action');
+        const id = button.getAttribute('data-server-id');
+        const api = action === 'register'
+          ? window.api.registerServiceServer
+          : action === 'unregister'
+            ? window.api.unregisterServiceServer
+            : window.api.reconnectServiceServer;
+        if (!api) return;
+        api(id).then(applyServiceSnapshot).catch((err) => {
+          console.error(err);
+          showNotification('Server action failed', 'error');
+        });
+      });
+    });
   }
 
   function renderMonitors(monitors) {
@@ -565,12 +641,39 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchButton = document.getElementById('service-search-button');
   if (searchButton) {
     searchButton.addEventListener('click', () => {
-      window.api.startServiceDiscovery().then((snapshot) => {
+      const refresh = window.api.refreshServiceDiscovery || window.api.startServiceDiscovery;
+      refresh().then((snapshot) => {
         applyServiceSnapshot(snapshot);
         showNotification('Searching for CLEVER-Service...', 'info');
       }).catch((err) => {
         console.error(err);
         showNotification('Could not start discovery', 'error');
+      });
+    });
+  }
+  const startDiscoveryButton = document.getElementById('service-start-discovery-button');
+  if (startDiscoveryButton) {
+    startDiscoveryButton.addEventListener('click', () => {
+      const start = window.api.startServiceDiscovery || window.api.refreshServiceDiscovery;
+      start().then((snapshot) => {
+        applyServiceSnapshot(snapshot);
+        showNotification('Discovery started', 'info');
+      }).catch((err) => {
+        console.error(err);
+        showNotification('Could not start discovery', 'error');
+      });
+    });
+  }
+  const stopDiscoveryButton = document.getElementById('service-stop-discovery-button');
+  if (stopDiscoveryButton) {
+    stopDiscoveryButton.addEventListener('click', () => {
+      if (!window.api.stopServiceDiscovery) return;
+      window.api.stopServiceDiscovery().then((snapshot) => {
+        applyServiceSnapshot(snapshot);
+        showNotification('Discovery stopped', 'info');
+      }).catch((err) => {
+        console.error(err);
+        showNotification('Could not stop discovery', 'error');
       });
     });
   }

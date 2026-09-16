@@ -81,6 +81,100 @@ test('discovery announcement parsing ignores other UDP traffic', () => {
   assert.equal(isProbe(buildProbe()), true)
 })
 
+test('discovery prefers the UDP source IP over a loopback announcement', () => {
+  const { pickReachableHost, serverKey, listLanInterfaces, directedBroadcast, isUsableLanIpv4, isVirtualInterfaceName } = require('../lib/discovery')
+  const rewritten = parseAnnouncement(Buffer.from(JSON.stringify(buildAnnounce({
+    hostname: 'clever-host',
+    ip: '127.0.0.1',
+    port: 8000,
+    protocol: 'http'
+  }))), { address: '192.168.1.44' })
+  assert.equal(rewritten.host, '192.168.1.44')
+  assert.equal(rewritten.ip, '192.168.1.44')
+  assert.equal(rewritten.advertisedIp, '127.0.0.1')
+  assert.equal(pickReachableHost({ advertisedIp: '127.0.0.1', sourceIp: '192.168.1.50' }), '192.168.1.50')
+  assert.equal(pickReachableHost({ advertisedIp: '127.0.0.1', sourceIp: '127.0.0.1' }), '127.0.0.1')
+  assert.equal(isUsableLanIpv4('127.0.0.1'), false)
+  assert.equal(isUsableLanIpv4('192.168.1.44'), true)
+  assert.equal(isVirtualInterfaceName('docker0'), true)
+  assert.equal(isVirtualInterfaceName('veth1b2c'), true)
+  assert.equal(isVirtualInterfaceName('eth0'), false)
+  assert.equal(isVirtualInterfaceName('Wi-Fi'), false)
+  assert.equal(isVirtualInterfaceName('vEthernet (External)'), false)
+  assert.equal(directedBroadcast('192.168.1.44', 24), '192.168.1.255')
+  assert.equal(directedBroadcast('10.0.0.50', 23), '10.0.1.255')
+  const ifaces = listLanInterfaces({
+    lo: [{ family: 'IPv4', address: '127.0.0.1', internal: true, cidr: '127.0.0.1/8' }],
+    docker0: [{ family: 'IPv4', address: '172.17.0.1', internal: false, cidr: '172.17.0.1/16' }],
+    eth0: [{ family: 'IPv4', address: '192.168.1.100', internal: false, cidr: '192.168.1.100/24' }],
+    'vEthernet (Default Switch)': [{ family: 'IPv4', address: '172.21.16.1', internal: false, cidr: '172.21.16.1/20' }]
+  })
+  assert.deepEqual(ifaces.map((iface) => iface.address), ['192.168.1.100'])
+  assert.equal(serverKey({ hostname: 'clever-a', port: 8000, ip: '192.168.1.44' }), 'clever-a:8000')
+  assert.equal(
+    serverKey({ hostname: 'clever-a', port: 8000, ip: '192.168.1.44' }),
+    serverKey({ hostname: 'CLEVER-A', port: 8000, ip: '10.0.0.8' })
+  )
+})
+
+test('discovery collects multiple servers and ignores duplicates', () => {
+  const { serverKey } = require('../lib/discovery')
+  const a = parseAnnouncement(Buffer.from(JSON.stringify(buildAnnounce({
+    hostname: 'clever-a',
+    ip: '192.168.1.44',
+    port: 8000
+  }))), { address: '192.168.1.44' })
+  const b = parseAnnouncement(Buffer.from(JSON.stringify(buildAnnounce({
+    hostname: 'clever-b',
+    ip: '192.168.1.50',
+    port: 8000
+  }))), { address: '192.168.1.50' })
+  const duplicate = parseAnnouncement(Buffer.from(JSON.stringify(buildAnnounce({
+    hostname: 'clever-a',
+    ip: '192.168.1.44',
+    port: 8000
+  }))), { address: '192.168.1.44' })
+  const keys = new Set([serverKey(a), serverKey(b), serverKey(duplicate)])
+  assert.equal(keys.size, 2)
+  assert.equal(a.host, '192.168.1.44')
+  assert.equal(b.host, '192.168.1.50')
+})
+
+test('discovery round accepts a unicast announcement and then stops', async () => {
+  const dgram = require('dgram')
+  const { ServiceDiscovery, buildAnnounce } = require('../lib/discovery')
+  const port = 18842
+  const found = []
+  const discovery = new ServiceDiscovery({
+    port,
+    timeoutMs: 400,
+    retryIntervalMs: 5000,
+    fallbackAddresses: ['127.0.0.1'],
+    onFound: (server) => found.push(server)
+  })
+  discovery.start()
+  await new Promise((resolve) => setTimeout(resolve, 120))
+  const socket = dgram.createSocket('udp4')
+  await new Promise((resolve, reject) => {
+    socket.bind(0, '127.0.0.1', () => resolve())
+    socket.on('error', reject)
+  })
+  const payload = Buffer.from(JSON.stringify(buildAnnounce({
+    hostname: 'clever-local',
+    ip: '127.0.0.1',
+    port: 8000
+  })))
+  const listenPort = discovery.listenSocket ? discovery.listenSocket.address().port : port
+  await new Promise((resolve, reject) => {
+    socket.send(payload, 0, payload.length, listenPort, '127.0.0.1', (err) => err ? reject(err) : resolve())
+  })
+  await new Promise((resolve) => setTimeout(resolve, 200))
+  socket.close()
+  discovery.stop()
+  assert.ok(found.length >= 1)
+  assert.equal(found[0].hostname, 'clever-local')
+})
+
 test('registration payload includes monitors and capabilities', () => {
   const payload = buildRegistrationPayload({
     deviceId: 'abc',

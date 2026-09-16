@@ -67,6 +67,11 @@ contextBridge.exposeInMainWorld('api', {
   getServiceConnection: () => ipcRenderer.invoke('get-service-connection'),
   saveServiceConfig: (partial) => ipcRenderer.invoke('save-service-config', partial),
   startServiceDiscovery: () => ipcRenderer.invoke('start-service-discovery'),
+  stopServiceDiscovery: () => ipcRenderer.invoke('stop-service-discovery'),
+  refreshServiceDiscovery: () => ipcRenderer.invoke('refresh-service-discovery'),
+  registerServiceServer: (id) => ipcRenderer.invoke('register-service-server', id),
+  unregisterServiceServer: (id) => ipcRenderer.invoke('unregister-service-server', id),
+  reconnectServiceServer: (id) => ipcRenderer.invoke('reconnect-service-server', id),
   getMonitors: () => ipcRenderer.invoke('get-monitors'),
   getAudioStatus: () => ipcRenderer.invoke('get-audio-status'),
   setAudioConfig: (partial) => ipcRenderer.invoke('set-audio-config', partial),
@@ -117,7 +122,9 @@ contextBridge.exposeInMainWorld('dashboardState', {
   overallStatusView: dashboardState.overallStatusView,
   formatTimestamp: dashboardState.formatTimestamp,
   vncView: dashboardState.vncView,
-  monitorRows: dashboardState.monitorRows
+  monitorRows: dashboardState.monitorRows,
+  discoveryView: dashboardState.discoveryView,
+  serverRows: dashboardState.serverRows
 })
 
 // Log preload execution

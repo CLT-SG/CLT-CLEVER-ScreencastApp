@@ -39,6 +39,33 @@ test('reconnecting and searching use the warning tone', () => {
   assert.equal(connectionStatusView({ state: 'searching' }).label, 'Searching')
 })
 
+test('connectionStatusView lists discovered servers and empty discovery text', () => {
+  const empty = connectionStatusView({
+    state: 'searching',
+    source: 'discovered',
+    discovery: { enabled: true, running: true, phase: 'waiting', discoveredCount: 0, message: 'No CLEVER-Service servers discovered' },
+    servers: []
+  })
+  assert.equal(empty.discovery.enabledLabel, 'Enabled')
+  assert.equal(empty.discovery.message, 'No CLEVER-Service servers discovered')
+  const view = connectionStatusView({
+    state: 'connected',
+    source: 'discovered',
+    registered: true,
+    discovery: { enabled: true, running: true, phase: 'searching', discoveredCount: 3 },
+    servers: [
+      { id: 'a:8000', hostname: 'clever-a', host: '192.168.1.44', ip: '192.168.1.44', port: 8000, state: 'registered', registered: true, statusLabel: 'Connected / Registered' },
+      { id: 'b:8000', hostname: 'clever-b', host: '192.168.1.50', ip: '192.168.1.50', port: 8000, state: 'registered', registered: true, statusLabel: 'Connected / Registered' },
+      { id: 'c:8000', hostname: 'clever-c', host: '192.168.1.60', ip: '192.168.1.60', port: 8000, state: 'unavailable', registered: false, statusLabel: 'Unavailable' }
+    ]
+  })
+  assert.equal(view.servers.length, 3)
+  assert.equal(view.discovery.count, 3)
+  assert.equal(view.servers[0].statusLabel, 'Connected / Registered')
+  assert.equal(view.servers[2].statusLabel, 'Unavailable')
+  assert.equal(view.servers[2].tone, 'danger')
+})
+
 test('updaterStatusView covers check, idle, ready, and failure states', () => {
   assert.equal(updaterStatusView({ state: 'checking' }).message, 'Checking for updates...')
   assert.equal(updaterStatusView({ state: 'unavailable' }).message, 'You are using the latest version.')

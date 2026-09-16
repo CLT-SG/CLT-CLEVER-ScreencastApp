@@ -5,6 +5,26 @@ All notable changes to the CLEVER Screencast KVM will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-09-16
+
+### Added
+- Multi-server CLEVER-Service discovery list with per-server connection and registration state
+- Discovery timeout, retry/backoff, network-change rediscovery, and Start / Stop / Refresh controls
+- Per-server Register, Unregister, and Reconnect actions
+- LAN interface filtering and per-interface UDP probes
+- Discovery documentation (`docs/DISCOVERY.md`) including Windows/Linux/macOS firewall notes
+
+### Changed
+- Automatic discovery no longer stops after the first server reply
+- Discovery prefers the UDP source IPv4 when a server advertises `127.0.0.1` or another unusable address
+- Compatible npm updates: Express 4.22, `ws` 8.21, `systeminformation` 5.33, `electron-log` 5.4, `electron-updater` 6.8
+- Electron remains 22.3.x and electron-builder remains 24.13.x so native packaging and the current updater architecture stay intact. Remaining npm audit findings are in those packages (`tar` / `app-builder-lib` / Electron CVEs) and require a future major upgrade.
+
+### Fixed
+- Remote LAN discovery failed when CLEVER-Service announced a loopback IP from hostname resolution
+- Broadcast probes could be sent only from an unbound socket, which is unreliable on Windows and multi-homed hosts
+- Directed broadcasts were computed only for `/8`, `/16`, and `/24` networks
+
 ## [2.2.0] - 2026-09-15
 
 ### Added

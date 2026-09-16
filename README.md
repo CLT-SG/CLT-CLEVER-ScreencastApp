@@ -4,7 +4,7 @@ Electron desktop application for CLEVER Screencast KVM: local VNC/screencast pub
 
 ## Features
 
-- CLEVER-Service LAN discovery, registration, heartbeat, and reconnect
+- CLEVER-Service LAN discovery, multi-server status, registration, heartbeat, and reconnect
 - Stable device ID, hostname, FQDN (`.local`), and IP reporting
 - Monitor detection and live layout sync (name, primary, resolution, position, size)
 - VNC port scan (`5900`–`5905`) and websockify/WebSocket publishing
@@ -35,6 +35,7 @@ Download the latest Windows, Linux, or macOS package from the GitHub Releases pa
 | Topic | File |
 | --- | --- |
 | Project setup and architecture | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |
+| LAN discovery and firewall | [docs/DISCOVERY.md](docs/DISCOVERY.md) |
 | Optional WebRTC audio | [docs/AUDIO.md](docs/AUDIO.md) |
 | Electron Updater | [docs/UPDATES.md](docs/UPDATES.md) |
 | Versioning, GitHub Actions, GitHub Releases | [docs/RELEASE.md](docs/RELEASE.md) |
@@ -58,6 +59,7 @@ npm test
 
 ## Troubleshooting
 
+- **Cannot discover a remote CLEVER-Service**: confirm UDP 8842 is allowed on both machines and that `php artisan screencast:discover` is running. See [docs/DISCOVERY.md](docs/DISCOVERY.md). Manual host/IP still works.
 - **VNC connection issues**: ensure a VNC server is running. TightVNC: https://www.tightvnc.com/download.php
 - **Audio not working**: audio is off by default. Enable System Audio or Microphone in the Audio panel; see [docs/AUDIO.md](docs/AUDIO.md). Enabling audio does not start VNC.
 - **Update failed**: expected for `npm start` and when no GitHub Release exists. The rest of the app keeps running.
