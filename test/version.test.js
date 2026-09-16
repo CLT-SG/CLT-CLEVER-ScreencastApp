@@ -22,8 +22,11 @@ test('electron-builder unpacks media assets for native tray APIs', () => {
   assert.equal(pkg.build.asar, true)
   assert.ok(Array.isArray(pkg.build.asarUnpack))
   assert.equal(pkg.build.asarUnpack.some((pattern) => pattern.includes('src/assets/media')), true)
-  assert.equal(pkg.build.extraResources[0].from, 'src/assets/media')
-  assert.equal(pkg.build.extraResources[0].to, 'media')
+  assert.notEqual(pkg.build.directories.buildResources, 'src/assets/media')
+  assert.equal(pkg.build.files.includes('src/assets/media/**/*'), true)
+  assert.equal(pkg.build.win.icon, 'src/assets/media/icon-512.png')
+  assert.equal(pkg.build.linux.icon, 'src/assets/media/icon-512.png')
+  assert.equal(pkg.build.mac.icon, 'src/assets/media/icon-512.png')
 })
 
 test('main process uses centralized asset loading instead of development-only paths', () => {

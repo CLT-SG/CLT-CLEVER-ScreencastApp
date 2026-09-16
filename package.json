@@ -56,26 +56,19 @@
     "artifactName": "CLEVER-Screencast-${os}-${arch}-${version}.${ext}",
     "directories": {
       "output": "build/Release",
-      "buildResources": "src/assets/media"
+      "buildResources": "build-resources"
     },
     "files": [
       "**/*",
+      "src/assets/media/**/*",
       "!test/**/*",
       "!.github/**/*",
-      "!docs/**/*"
+      "!docs/**/*",
+      "!build-resources/**/*"
     ],
     "asar": true,
     "asarUnpack": [
       "src/assets/media/**"
-    ],
-    "extraResources": [
-      {
-        "from": "src/assets/media",
-        "to": "media",
-        "filter": [
-          "**/*"
-        ]
-      }
     ],
     "compression": "normal",
     "publish": {
