@@ -1,6 +1,6 @@
 {
   "name": "cleverscreencast",
-  "version": "2.3.0",
+  "version": "2.3.5",
   "description": "CLEVER Screencast KVM for screen sharing and remote access",
   "main": "index.js",
   "scripts": {
