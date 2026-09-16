@@ -27,6 +27,7 @@ const datelog = moment().format('YYYY-MM-DD')
 const config = require('./config')
 const { ConnectionManager } = require('./lib/connection-manager')
 const { mdnsHostname } = require('./lib/host-names')
+const { primaryLanAddress, isUsableLanIpv4 } = require('./lib/discovery')
 const { AudioBridge } = require('./lib/audio-bridge')
 const { normalizeAudioConfig, configLine } = require('./lib/audio-config')
 const { createUpdater } = require('./lib/updater')
@@ -44,16 +45,20 @@ var hostnameLocal = mdnsHostname(hostname)
 async function getHostInfo() {
   try {
     const networkInfo = await si.networkInterfaces('default')
+    let ip = networkInfo && networkInfo.ip4
+    if (!isUsableLanIpv4(ip)) {
+      ip = primaryLanAddress() || ip
+    }
     return {
-      ip: networkInfo.ip4,
-      mac: networkInfo.mac,
+      ip: ip || primaryLanAddress() || '127.0.0.1',
+      mac: networkInfo && networkInfo.mac,
       hostname: hostname,
       hostnameLocal: hostnameLocal
     }
   } catch (err) {
     log.error(`Error getting host info: ${err}`)
     return {
-      ip: '127.0.0.1',
+      ip: primaryLanAddress() || '127.0.0.1',
       mac: null,
       hostname: hostname,
       hostnameLocal: hostnameLocal
@@ -722,6 +727,44 @@ try {
         return connectionManager.snapshot()
       })
 
+      ipcMain.handle('stop-service-discovery', async () => {
+        if (!connectionManager) {
+          return null
+        }
+        log.info('Stopping CLEVER-Service automatic discovery')
+        connectionManager.stopDiscovery()
+        return connectionManager.snapshot()
+      })
+
+      ipcMain.handle('refresh-service-discovery', async () => {
+        if (!connectionManager) {
+          return null
+        }
+        log.info('Refreshing CLEVER-Service automatic discovery')
+        return connectionManager.refreshDiscovery()
+      })
+
+      ipcMain.handle('register-service-server', async (_event, id) => {
+        if (!connectionManager) {
+          return null
+        }
+        return connectionManager.registerServer(id)
+      })
+
+      ipcMain.handle('unregister-service-server', async (_event, id) => {
+        if (!connectionManager) {
+          return null
+        }
+        return connectionManager.unregisterServer(id)
+      })
+
+      ipcMain.handle('reconnect-service-server', async (_event, id) => {
+        if (!connectionManager) {
+          return null
+        }
+        return connectionManager.reconnectServer(id)
+      })
+
       ipcMain.handle('get-monitors', () => {
         return connectionManager ? connectionManager.monitors : []
       })
@@ -994,7 +1037,15 @@ function startConnectionManager() {
     getAudioSnapshot: () => audioBridge ? audioBridge.snapshot() : null,
     getSharing: () => isSharing,
     wsPort: config.server?.port || 8840,
-    vncPort: parseInt(vncport, 10) || 5900
+    vncPort: parseInt(vncport, 10) || 5900,
+    discovery: {
+      port: config.cleverService?.discoveryPort,
+      timeoutMs: config.cleverService?.discoveryTimeoutMs,
+      retryIntervalMs: config.cleverService?.retryIntervalMs,
+      maxRetryIntervalMs: config.cleverService?.maxRetryIntervalMs,
+      fallbackAddresses: config.cleverService?.fallbackAddresses,
+      httpPorts: config.cleverService?.httpPorts
+    }
   })
   connectionManager.on('status', (snapshot) => {
     if (win && !win.isDestroyed()) {

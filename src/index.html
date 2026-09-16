@@ -81,7 +81,22 @@
           <dt>Last heartbeat</dt>
           <dd id="service-heartbeat-label">Never</dd>
         </div>
+        <div>
+          <dt>Discovery</dt>
+          <dd id="service-discovery-enabled-label">Disabled</dd>
+        </div>
+        <div>
+          <dt>Discovery state</dt>
+          <dd id="service-discovery-state-label">Stopped</dd>
+        </div>
+        <div>
+          <dt>Servers</dt>
+          <dd id="service-discovery-count-label">0 servers</dd>
+        </div>
       </dl>
+      <div id="service-servers-info" class="table-wrap server-list">
+        <p class="muted" id="service-servers-empty">No CLEVER-Service servers discovered</p>
+      </div>
       <div class="settings-row service-config-row">
         <label class="service-mode">
           <input type="radio" name="service-mode" value="auto" id="service-mode-auto" checked>
@@ -108,7 +123,9 @@
         <button id="service-save-button" class="action-button start-button" type="button">Save</button>
       </div>
       <div class="control-buttons service-actions">
-        <button id="service-search-button" class="action-button reset-button" type="button">Search again</button>
+        <button id="service-search-button" class="action-button reset-button" type="button">Refresh Discovery</button>
+        <button id="service-start-discovery-button" class="action-button start-button" type="button">Start Discovery</button>
+        <button id="service-stop-discovery-button" class="action-button stop-button" type="button">Stop Discovery</button>
       </div>
     </section>
 
