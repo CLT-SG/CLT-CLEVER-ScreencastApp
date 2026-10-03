@@ -27,6 +27,9 @@ exports.connection = {
 // Server configuration
 exports.server = {
   port: 8840,          // Port for HTTPS / websockify server
+  // Listen on all IPv4 interfaces so remote Video Wall / Console clients
+  // can reach websockify. Local VNC proxying still uses 127.0.0.1.
+  bindAddress: '0.0.0.0',
   scanPorts: ['5900', '5901', '5902', '5903', '5904', '5905'] // VNC ports to scan
 }
 

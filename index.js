@@ -32,6 +32,7 @@ const { AudioBridge } = require('./lib/audio-bridge')
 const { normalizeAudioConfig, configLine } = require('./lib/audio-config')
 const { createUpdater } = require('./lib/updater')
 const { createAssetLoader } = require('./lib/assets')
+const { createStatusHandler } = require('./lib/http-status')
 
 // Configure logging
 var log = require('electron-log')
@@ -40,6 +41,9 @@ var pingstat
 var ipaddress
 var hostname = os.hostname()
 var hostnameLocal = mdnsHostname(hostname)
+var publishedVncTargets = []
+var serverBindAddress = (config.server && config.server.bindAddress) || '0.0.0.0'
+var serverListenPort = config.server?.port || 8840
 
 // Helper function to get host information - both IP and hostnames
 async function getHostInfo() {
@@ -180,11 +184,21 @@ function loadTrayImages() {
   return { idle, publish, materializedIdle, materializedPublish }
 }
 
-// Websockify settings
+// Websockify settings. Bind on 0.0.0.0 so remote Video Wall / Console
+// clients can open wss://<lan-ip>:8840/screenN. Local VNC stays on 127.0.0.1.
 const server = createServer({
   cert: readStartupFile(path.join(__dirname, 'cert', 'example.com+5.pem'), 'TLS certificate'),
   key: readStartupFile(path.join(__dirname, 'cert', 'example.com+5-key.pem'), 'TLS private key')
-})
+}, createStatusHandler({
+  getState: () => ({
+    bindAddress: serverBindAddress,
+    port: serverListenPort,
+    hostname,
+    hostnameLocal,
+    ip: ipaddress || null,
+    screens: publishedVncTargets
+  })
+}))
 
 // Create log directory if it doesn't exist
 if (!fs.existsSync(logdir)) {
@@ -363,9 +377,18 @@ try {
       log.error('Unhandled promise rejection:', reason)
     })
 
-    // Start HTTP server
+    // Start HTTPS / websockify server on all interfaces for remote clients.
     try {
-      server.listen(config.server?.port || 8840, () => log.info(`Server listening on ${hostname}:${config.server?.port || 8840}`))
+      serverListenPort = config.server?.port || 8840
+      serverBindAddress = (config.server && config.server.bindAddress) || '0.0.0.0'
+      server.listen(serverListenPort, serverBindAddress, () => {
+        log.info('WebSocket Server Started')
+        log.info(`Bind Address: ${serverBindAddress}`)
+        log.info(`Port: ${serverListenPort}`)
+        log.info(`Advertised host: ${hostname} / ${hostnameLocal}`)
+        log.info('Allow inbound TCP ' + serverListenPort +
+          ' in the host firewall for remote Video Wall and Console clients')
+      })
       server.on('error', (err) => {
         log.error(`[startup] HTTPS server error: ${err.message}`)
       })
@@ -876,8 +899,10 @@ async function publishVncTargets() {
       wsPort: config.server?.port || 8840,
       logger: log
     })
+    publishedVncTargets = availablePorts
     if (availablePorts.length > 0) {
       log.info(`Available ports: ${availablePorts.map(p => p.path + ' -> ' + p.target).join(', ')}`)
+      log.info('Screen endpoints: ' + availablePorts.map((item) => item.path).join(', '))
       websockify(server, availablePorts)
     } else {
       log.warn('No VNC ports available')

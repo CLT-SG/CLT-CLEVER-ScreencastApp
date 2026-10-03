@@ -43,11 +43,16 @@ Runtime settings live in [`config.js`](../config.js):
 | --- | --- |
 | `window` | Dashboard size (`1180×760` by default, resizable) |
 | `server.port` | HTTPS / websockify port (`8840`) |
+| `server.bindAddress` | Listen address for remote Video Wall / Console clients (`0.0.0.0`) |
 | `server.scanPorts` | VNC ports to probe (`5900`–`5905`) |
 | `cleverService` | Discovery UDP port, default HTTP port, discovery timeout/retry. Host/IP are **never** hardcoded |
 | `autostartup` / `autoshare` | Tray and dashboard checkboxes |
 | `audio` / `systemAudio` / `microphone` / `speakerOutput` / `twoWayAudio` | Independent WebRTC audio (dashboard Audio panel; off by default) |
 | `autorestart` | Cache-clear interval |
+
+The HTTPS/websockify server must listen on `0.0.0.0`, not `127.0.0.1`. Remote CLEVER Video Wall and Console browsers open `wss://<ScreencastApp-LAN-IP>:8840/screen0` directly. Registration with CLEVER-Service only proves discovery; it does not open the host firewall. Allow inbound TCP `8840` on the ScreencastApp machine for LAN clients. Local VNC forwarding still uses `127.0.0.1:5900+`.
+
+`GET https://<host>:8840/status` returns the bind address and published `/screenN` paths for remote probes.
 
 CLEVER-Service connection mode (automatic discovery vs manual host/port) is stored in Electron `userData` as `clever-service.json`. The stable device id is stored as `device-id.json` in the same directory.
 

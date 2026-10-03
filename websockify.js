@@ -35,7 +35,11 @@ function websockify(server, targets) {
     attached.set(server, wss)
     wss.on('connection', function connection(ws, req) {
       const pathname = url.parse(req.url).pathname
+      const remote = (req && (req.socket && req.socket.remoteAddress)) ||
+        (req.headers && req.headers['x-forwarded-for']) ||
+        'unknown'
       const currentTargets = wss.vncTargets || []
+      log.info(`Remote WebSocket client ${remote} requested ${pathname}`)
 
       let matchingTarget = currentTargets.find(t => pathname === t.path)
 
@@ -61,7 +65,7 @@ function websockify(server, targets) {
 
       if (matchingTarget) {
         const [targetHost, targetPort] = matchingTarget.target.split(':')
-        log.info(`WebSocket connection: ${pathname} -> ${targetHost}:${targetPort}`)
+        log.info(`WebSocket connection from ${remote}: ${pathname} -> ${targetHost}:${targetPort}`)
         const tcpConnection = net.createConnection({
           host: targetHost,
           port: parseInt(targetPort, 10)
@@ -124,7 +128,7 @@ function websockify(server, targets) {
         })
       } else {
         const known = currentTargets.map(t => t.path).join(', ') || '(none)'
-        log.warn(`No VNC target found for path: ${pathname}; known paths: ${known}`)
+        log.warn(`Rejected remote client ${remote}: no VNC target for path ${pathname}; known paths: ${known}`)
         try {
           ws.close(1008, `No VNC target for ${pathname}`.slice(0, 120))
         } catch (err) {
