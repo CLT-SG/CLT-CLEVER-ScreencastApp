@@ -19,7 +19,6 @@ const AutoLaunch = require('auto-launch')
 const isReachable = require('is-reachable')
 const websockify = require('./websockify')
 const { createServer } = require("https")
-const async = require('async')
 const logdir = path.normalize(homedir + '/clevervnc-log')
 const now = new Date()
 const moment = require('moment') // Replace date-and-time with moment
@@ -27,6 +26,7 @@ const datelog = moment().format('YYYY-MM-DD')
 const config = require('./config')
 const { ConnectionManager } = require('./lib/connection-manager')
 const { mdnsHostname } = require('./lib/host-names')
+const { scanVncTargets } = require('./lib/vnc-scan')
 const { primaryLanAddress, isUsableLanIpv4 } = require('./lib/discovery')
 const { AudioBridge } = require('./lib/audio-bridge')
 const { normalizeAudioConfig, configLine } = require('./lib/audio-config')
@@ -657,48 +657,7 @@ try {
 
       // Scan and set up VNC ports
       ipcMain.handle('port-extended', async () => {
-        log.info('Scanning VNC ports')
-        const ports = config.server?.scanPorts || ['5900', '5901', '5902', '5903', '5904', '5905']
-        const availablePorts = []
-        
-        try {
-          await new Promise((resolve) => {
-            async.eachSeries(ports, (port, callback) => {
-              isReachable(`127.0.0.1:${port}`, { timeout: 10000 })
-                .then(status => {
-                  if (status) {
-                    log.info(`VNC port ${port} is available`)
-                    const screenPath = `/screen${port.substring(3, 4)}`
-                    // Add both hostname formats for each port
-                    availablePorts.push({
-                      target: `${ipaddress}:${port}`,
-                      path: screenPath,
-                      hostname: hostname,
-                      hostnameLocal: hostnameLocal,
-                      port: port
-                    })
-                  }
-                  callback() // Properly call the callback function
-                })
-                .catch(err => {
-                  log.error(`Error checking port ${port}: ${err}`)
-                  callback() // Make sure to call callback even on error
-                })
-            }, () => {
-              if (availablePorts.length > 0) {
-                log.info(`Available ports: ${availablePorts.map(p => p.target).join(', ')}`)
-                websockify(server, availablePorts)
-              } else {
-                log.warn('No VNC ports available')
-              }
-              resolve()
-            })
-          })
-        } catch (err) {
-          log.error(`Error in port scanning: ${err}`)
-        }
-        
-        return availablePorts
+        return publishVncTargets()
       })
 
       // Return host information
@@ -900,6 +859,35 @@ function replaceConfig(search, replace) {
   }
 }
 
+async function publishVncTargets() {
+  const ports = config.server?.scanPorts || ['5900', '5901', '5902', '5903', '5904', '5905']
+  log.info('Scanning VNC ports')
+  let availablePorts = []
+  try {
+    const hostInfo = ipaddress ? null : await getHostInfo().catch(() => null)
+    if (hostInfo && hostInfo.ip) {
+      ipaddress = hostInfo.ip
+    }
+    availablePorts = await scanVncTargets({
+      ports,
+      hostname,
+      hostnameLocal,
+      ip: ipaddress,
+      wsPort: config.server?.port || 8840,
+      logger: log
+    })
+    if (availablePorts.length > 0) {
+      log.info(`Available ports: ${availablePorts.map(p => p.path + ' -> ' + p.target).join(', ')}`)
+      websockify(server, availablePorts)
+    } else {
+      log.warn('No VNC ports available')
+    }
+  } catch (err) {
+    log.error(`Error in port scanning: ${err}`)
+  }
+  return availablePorts
+}
+
 async function checkVncAndOpenWindow() {
   try {
     const timeout = config.connection?.timeout || 10000
@@ -913,6 +901,7 @@ async function checkVncAndOpenWindow() {
       pingstat = false
       log.info(`VNC server found on port ${vncport}, loading application`)
       log.info(`Host information: IP=${hostInfo.ip}, Hostname=${hostInfo.hostname}, Hostname.local=${hostInfo.hostnameLocal}`)
+      await publishVncTargets()
       startConnectionManager()
 
       // Auto-start sharing if enabled in config

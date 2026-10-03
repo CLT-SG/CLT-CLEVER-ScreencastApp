@@ -64,25 +64,53 @@ function websockify(server, targets) {
         log.info(`WebSocket connection: ${pathname} -> ${targetHost}:${targetPort}`)
         const tcpConnection = net.createConnection({
           host: targetHost,
-          port: parseInt(targetPort)
+          port: parseInt(targetPort, 10)
         })
+
+        let clientClosed = false
+        const closeSocket = (code, reason) => {
+          if (clientClosed) {
+            return
+          }
+          clientClosed = true
+          const text = String(reason || '').slice(0, 120)
+          try {
+            ws.close(code || 1011, text)
+          } catch (err) {
+            try {
+              ws.close()
+            } catch (closeErr) {
+              log.error(`WebSocket close failed: ${closeErr.message}`)
+            }
+          }
+        }
 
         tcpConnection.on('connect', function() {
           log.info(`TCP connection established to ${targetHost}:${targetPort}`)
         })
         tcpConnection.on('error', function(err) {
-          log.error(`TCP connection error to ${targetHost}:${targetPort}: ${err.message}`)
-          ws.close()
+          const refused = err && (err.code === 'ECONNREFUSED' || err.code === 'EHOSTUNREACH')
+          const reason = refused
+            ? `Connection refused ${targetHost}:${targetPort}`
+            : `TCP connection error ${targetHost}:${targetPort}: ${err.message}`
+          log.error(reason)
+          closeSocket(1011, reason)
         })
         tcpConnection.on('close', function() {
           log.info(`TCP connection closed to ${targetHost}:${targetPort}`)
-          ws.close()
+          if (ws.readyState === ws.OPEN || ws.readyState === ws.CONNECTING) {
+            closeSocket(1000, 'VNC connection closed')
+          }
         })
         ws.on('message', function(message) {
-          tcpConnection.write(message)
+          const payload = Buffer.isBuffer(message) ? message : Buffer.from(message)
+          if (!tcpConnection.destroyed) {
+            tcpConnection.write(payload)
+          }
         })
-        ws.on('close', function() {
-          log.info(`WebSocket connection closed: ${pathname}`)
+        ws.on('close', function(code, reason) {
+          const why = reason ? reason.toString() : ''
+          log.info(`WebSocket connection closed: ${pathname} code=${code || ''} reason=${why}`)
           tcpConnection.destroy()
         })
         ws.on('error', function(err) {
@@ -90,11 +118,18 @@ function websockify(server, targets) {
           tcpConnection.destroy()
         })
         tcpConnection.on('data', function(data) {
-          ws.send(data)
+          if (ws.readyState === ws.OPEN) {
+            ws.send(data, { binary: true })
+          }
         })
       } else {
-        log.warn(`No VNC target found for path: ${pathname}`)
-        ws.close()
+        const known = currentTargets.map(t => t.path).join(', ') || '(none)'
+        log.warn(`No VNC target found for path: ${pathname}; known paths: ${known}`)
+        try {
+          ws.close(1008, `No VNC target for ${pathname}`.slice(0, 120))
+        } catch (err) {
+          ws.close()
+        }
       }
     })
   }
