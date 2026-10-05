@@ -27,6 +27,7 @@ const config = require('./config')
 const { ConnectionManager } = require('./lib/connection-manager')
 const { mdnsHostname } = require('./lib/host-names')
 const { scanVncTargets } = require('./lib/vnc-scan')
+const { describeCertificate, attachTlsDiagnostics } = require('./lib/tls-info')
 const { primaryLanAddress, isUsableLanIpv4 } = require('./lib/discovery')
 const { AudioBridge } = require('./lib/audio-bridge')
 const { normalizeAudioConfig, configLine } = require('./lib/audio-config')
@@ -186,9 +187,26 @@ function loadTrayImages() {
 
 // Websockify settings. Bind on 0.0.0.0 so remote Video Wall / Console
 // clients can open wss://<lan-ip>:8840/screenN. Local VNC stays on 127.0.0.1.
+const tlsCertPem = readStartupFile(path.join(__dirname, 'cert', 'example.com+5.pem'), 'TLS certificate')
+const tlsKeyPem = readStartupFile(path.join(__dirname, 'cert', 'example.com+5-key.pem'), 'TLS private key')
+const tlsSummary = describeCertificate(tlsCertPem)
+if (tlsSummary.error) {
+  log.error(`[startup] TLS certificate unreadable: ${tlsSummary.error}`)
+} else {
+  log.info(`[startup] TLS certificate subject=${tlsSummary.subject}` +
+    ` validFrom=${tlsSummary.validFrom} validTo=${tlsSummary.validTo}` +
+    ` san=${tlsSummary.san || '(none)'}`)
+  if (tlsSummary.expired) {
+    log.error('[startup] TLS certificate is EXPIRED. Remote Video Wall / Console ' +
+      'wss handshakes will fail with WebSocket Handshake Failed while /status ' +
+      'probes that ignore cert errors still PASS. Regenerate cert/example.com+5.pem.')
+  } else if (tlsSummary.notYetValid) {
+    log.error('[startup] TLS certificate is not valid yet')
+  }
+}
 const server = createServer({
-  cert: readStartupFile(path.join(__dirname, 'cert', 'example.com+5.pem'), 'TLS certificate'),
-  key: readStartupFile(path.join(__dirname, 'cert', 'example.com+5-key.pem'), 'TLS private key')
+  cert: tlsCertPem,
+  key: tlsKeyPem
 }, createStatusHandler({
   getState: () => ({
     bindAddress: serverBindAddress,
@@ -199,6 +217,7 @@ const server = createServer({
     screens: publishedVncTargets
   })
 }))
+attachTlsDiagnostics(server, log)
 
 // Create log directory if it doesn't exist
 if (!fs.existsSync(logdir)) {

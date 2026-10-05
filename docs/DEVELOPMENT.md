@@ -54,6 +54,18 @@ The HTTPS/websockify server must listen on `0.0.0.0`, not `127.0.0.1`. Remote CL
 
 `GET https://<host>:8840/status` returns the bind address and published `/screenN` paths for remote probes.
 
+TLS materials live in `cert/example.com+5.pem` and `cert/example.com+5-key.pem`. Startup logs print the certificate `validTo` date. An expired cert makes CLEVER Player report `WebSocket Handshake Failed` even when `/status` probes that ignore certificate errors still PASS. Regenerate with:
+
+```bash
+openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes \
+  -keyout cert/example.com+5-key.pem \
+  -out cert/example.com+5.pem \
+  -subj "/O=CLT CLEVER ScreencastApp/CN=localhost" \
+  -addext "subjectAltName=DNS:localhost,DNS:example.com,DNS:*.local,IP:127.0.0.1" \
+  -addext "extendedKeyUsage=serverAuth" \
+  -addext "keyUsage=digitalSignature,keyEncipherment"
+```
+
 CLEVER-Service connection mode (automatic discovery vs manual host/port) is stored in Electron `userData` as `clever-service.json`. The stable device id is stored as `device-id.json` in the same directory.
 
 ## Architecture (do not duplicate)
