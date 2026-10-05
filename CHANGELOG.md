@@ -5,6 +5,11 @@ All notable changes to the CLEVER Screencast KVM will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Registration/heartbeat continue to advertise the full multi-monitor layout so CLEVER-Service can bind multiple Screencast records to the same device (`device_id` + `monitor_id`).
+
 ## [2.4.0] - 2026-09-16
 
 ### Added
