@@ -19,7 +19,6 @@ const AutoLaunch = require('auto-launch')
 const isReachable = require('is-reachable')
 const websockify = require('./websockify')
 const { createServer } = require("https")
-const async = require('async')
 const logdir = path.normalize(homedir + '/clevervnc-log')
 const now = new Date()
 const moment = require('moment') // Replace date-and-time with moment
@@ -27,11 +26,14 @@ const datelog = moment().format('YYYY-MM-DD')
 const config = require('./config')
 const { ConnectionManager } = require('./lib/connection-manager')
 const { mdnsHostname } = require('./lib/host-names')
+const { scanVncTargets } = require('./lib/vnc-scan')
+const { describeCertificate, attachTlsDiagnostics } = require('./lib/tls-info')
 const { primaryLanAddress, isUsableLanIpv4 } = require('./lib/discovery')
 const { AudioBridge } = require('./lib/audio-bridge')
 const { normalizeAudioConfig, configLine } = require('./lib/audio-config')
 const { createUpdater } = require('./lib/updater')
 const { createAssetLoader } = require('./lib/assets')
+const { createStatusHandler } = require('./lib/http-status')
 
 // Configure logging
 var log = require('electron-log')
@@ -40,6 +42,9 @@ var pingstat
 var ipaddress
 var hostname = os.hostname()
 var hostnameLocal = mdnsHostname(hostname)
+var publishedVncTargets = []
+var serverBindAddress = (config.server && config.server.bindAddress) || '0.0.0.0'
+var serverListenPort = config.server?.port || 8840
 
 // Helper function to get host information - both IP and hostnames
 async function getHostInfo() {
@@ -180,11 +185,39 @@ function loadTrayImages() {
   return { idle, publish, materializedIdle, materializedPublish }
 }
 
-// Websockify settings
+// Websockify settings. Bind on 0.0.0.0 so remote Video Wall / Console
+// clients can open wss://<lan-ip>:8840/screenN. Local VNC stays on 127.0.0.1.
+const tlsCertPem = readStartupFile(path.join(__dirname, 'cert', 'example.com+5.pem'), 'TLS certificate')
+const tlsKeyPem = readStartupFile(path.join(__dirname, 'cert', 'example.com+5-key.pem'), 'TLS private key')
+const tlsSummary = describeCertificate(tlsCertPem)
+if (tlsSummary.error) {
+  log.error(`[startup] TLS certificate unreadable: ${tlsSummary.error}`)
+} else {
+  log.info(`[startup] TLS certificate subject=${tlsSummary.subject}` +
+    ` validFrom=${tlsSummary.validFrom} validTo=${tlsSummary.validTo}` +
+    ` san=${tlsSummary.san || '(none)'}`)
+  if (tlsSummary.expired) {
+    log.error('[startup] TLS certificate is EXPIRED. Remote Video Wall / Console ' +
+      'wss handshakes will fail with WebSocket Handshake Failed while /status ' +
+      'probes that ignore cert errors still PASS. Regenerate cert/example.com+5.pem.')
+  } else if (tlsSummary.notYetValid) {
+    log.error('[startup] TLS certificate is not valid yet')
+  }
+}
 const server = createServer({
-  cert: readStartupFile(path.join(__dirname, 'cert', 'example.com+5.pem'), 'TLS certificate'),
-  key: readStartupFile(path.join(__dirname, 'cert', 'example.com+5-key.pem'), 'TLS private key')
-})
+  cert: tlsCertPem,
+  key: tlsKeyPem
+}, createStatusHandler({
+  getState: () => ({
+    bindAddress: serverBindAddress,
+    port: serverListenPort,
+    hostname,
+    hostnameLocal,
+    ip: ipaddress || null,
+    screens: publishedVncTargets
+  })
+}))
+attachTlsDiagnostics(server, log)
 
 // Create log directory if it doesn't exist
 if (!fs.existsSync(logdir)) {
@@ -363,9 +396,18 @@ try {
       log.error('Unhandled promise rejection:', reason)
     })
 
-    // Start HTTP server
+    // Start HTTPS / websockify server on all interfaces for remote clients.
     try {
-      server.listen(config.server?.port || 8840, () => log.info(`Server listening on ${hostname}:${config.server?.port || 8840}`))
+      serverListenPort = config.server?.port || 8840
+      serverBindAddress = (config.server && config.server.bindAddress) || '0.0.0.0'
+      server.listen(serverListenPort, serverBindAddress, () => {
+        log.info('WebSocket Server Started')
+        log.info(`Bind Address: ${serverBindAddress}`)
+        log.info(`Port: ${serverListenPort}`)
+        log.info(`Advertised host: ${hostname} / ${hostnameLocal}`)
+        log.info('Allow inbound TCP ' + serverListenPort +
+          ' in the host firewall for remote Video Wall and Console clients')
+      })
       server.on('error', (err) => {
         log.error(`[startup] HTTPS server error: ${err.message}`)
       })
@@ -657,48 +699,7 @@ try {
 
       // Scan and set up VNC ports
       ipcMain.handle('port-extended', async () => {
-        log.info('Scanning VNC ports')
-        const ports = config.server?.scanPorts || ['5900', '5901', '5902', '5903', '5904', '5905']
-        const availablePorts = []
-        
-        try {
-          await new Promise((resolve) => {
-            async.eachSeries(ports, (port, callback) => {
-              isReachable(`127.0.0.1:${port}`, { timeout: 10000 })
-                .then(status => {
-                  if (status) {
-                    log.info(`VNC port ${port} is available`)
-                    const screenPath = `/screen${port.substring(3, 4)}`
-                    // Add both hostname formats for each port
-                    availablePorts.push({
-                      target: `${ipaddress}:${port}`,
-                      path: screenPath,
-                      hostname: hostname,
-                      hostnameLocal: hostnameLocal,
-                      port: port
-                    })
-                  }
-                  callback() // Properly call the callback function
-                })
-                .catch(err => {
-                  log.error(`Error checking port ${port}: ${err}`)
-                  callback() // Make sure to call callback even on error
-                })
-            }, () => {
-              if (availablePorts.length > 0) {
-                log.info(`Available ports: ${availablePorts.map(p => p.target).join(', ')}`)
-                websockify(server, availablePorts)
-              } else {
-                log.warn('No VNC ports available')
-              }
-              resolve()
-            })
-          })
-        } catch (err) {
-          log.error(`Error in port scanning: ${err}`)
-        }
-        
-        return availablePorts
+        return publishVncTargets()
       })
 
       // Return host information
@@ -900,6 +901,37 @@ function replaceConfig(search, replace) {
   }
 }
 
+async function publishVncTargets() {
+  const ports = config.server?.scanPorts || ['5900', '5901', '5902', '5903', '5904', '5905']
+  log.info('Scanning VNC ports')
+  let availablePorts = []
+  try {
+    const hostInfo = ipaddress ? null : await getHostInfo().catch(() => null)
+    if (hostInfo && hostInfo.ip) {
+      ipaddress = hostInfo.ip
+    }
+    availablePorts = await scanVncTargets({
+      ports,
+      hostname,
+      hostnameLocal,
+      ip: ipaddress,
+      wsPort: config.server?.port || 8840,
+      logger: log
+    })
+    publishedVncTargets = availablePorts
+    if (availablePorts.length > 0) {
+      log.info(`Available ports: ${availablePorts.map(p => p.path + ' -> ' + p.target).join(', ')}`)
+      log.info('Screen endpoints: ' + availablePorts.map((item) => item.path).join(', '))
+      websockify(server, availablePorts)
+    } else {
+      log.warn('No VNC ports available')
+    }
+  } catch (err) {
+    log.error(`Error in port scanning: ${err}`)
+  }
+  return availablePorts
+}
+
 async function checkVncAndOpenWindow() {
   try {
     const timeout = config.connection?.timeout || 10000
@@ -913,6 +945,7 @@ async function checkVncAndOpenWindow() {
       pingstat = false
       log.info(`VNC server found on port ${vncport}, loading application`)
       log.info(`Host information: IP=${hostInfo.ip}, Hostname=${hostInfo.hostname}, Hostname.local=${hostInfo.hostnameLocal}`)
+      await publishVncTargets()
       startConnectionManager()
 
       // Auto-start sharing if enabled in config

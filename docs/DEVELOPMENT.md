@@ -43,11 +43,30 @@ Runtime settings live in [`config.js`](../config.js):
 | --- | --- |
 | `window` | Dashboard size (`1180×760` by default, resizable) |
 | `server.port` | HTTPS / websockify port (`8840`) |
+| `server.bindAddress` | Listen address for remote Video Wall / Console clients (`0.0.0.0`) |
 | `server.scanPorts` | VNC ports to probe (`5900`–`5905`) |
 | `cleverService` | Discovery UDP port, default HTTP port, discovery timeout/retry. Host/IP are **never** hardcoded |
 | `autostartup` / `autoshare` | Tray and dashboard checkboxes |
 | `audio` / `systemAudio` / `microphone` / `speakerOutput` / `twoWayAudio` | Independent WebRTC audio (dashboard Audio panel; off by default) |
 | `autorestart` | Cache-clear interval |
+
+The HTTPS/websockify server must listen on `0.0.0.0`, not `127.0.0.1`. Remote CLEVER Video Wall and Console browsers open `wss://<ScreencastApp-LAN-IP>:8840/screen0` directly. Registration with CLEVER-Service only proves discovery; it does not open the host firewall. Allow inbound TCP `8840` on the ScreencastApp machine for LAN clients.
+
+Local VNC is dialed via the machine LAN IP when known (`192.168.x.x:5900`), with `127.0.0.1:5900` as a TCP fallback. Dialing only loopback makes UltraVNC/TightVNC reject RFB with `Sorry, loopback connections are not enabled` unless "Allow Loopback Connections" is enabled in the VNC server.
+
+`GET https://<host>:8840/status` returns the bind address and published `/screenN` paths for remote probes.
+
+TLS materials live in `cert/example.com+5.pem` and `cert/example.com+5-key.pem`. Startup logs print the certificate `validTo` date. An expired cert makes CLEVER Player report `WebSocket Handshake Failed` even when `/status` probes that ignore certificate errors still PASS. Regenerate with:
+
+```bash
+openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes \
+  -keyout cert/example.com+5-key.pem \
+  -out cert/example.com+5.pem \
+  -subj "/O=CLT CLEVER ScreencastApp/CN=localhost" \
+  -addext "subjectAltName=DNS:localhost,DNS:example.com,DNS:*.local,IP:127.0.0.1" \
+  -addext "extendedKeyUsage=serverAuth" \
+  -addext "keyUsage=digitalSignature,keyEncipherment"
+```
 
 CLEVER-Service connection mode (automatic discovery vs manual host/port) is stored in Electron `userData` as `clever-service.json`. The stable device id is stored as `device-id.json` in the same directory.
 

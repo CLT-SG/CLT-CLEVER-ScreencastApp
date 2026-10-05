@@ -27,6 +27,10 @@ exports.connection = {
 // Server configuration
 exports.server = {
   port: 8840,          // Port for HTTPS / websockify server
+  // Listen on all IPv4 interfaces so remote Video Wall / Console clients
+  // can reach websockify. Local UltraVNC is dialed via the LAN IP when
+  // possible (loopback RFB is often rejected unless AllowLoopback is on).
+  bindAddress: '0.0.0.0',
   scanPorts: ['5900', '5901', '5902', '5903', '5904', '5905'] // VNC ports to scan
 }
 
