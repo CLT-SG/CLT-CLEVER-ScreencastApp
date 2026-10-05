@@ -220,6 +220,25 @@ test('registration payload includes monitors and capabilities', () => {
   assert.equal(payload.wsPath, '/screen0')
 })
 
+test('registration payload can advertise multiple monitors from one device', () => {
+  const payload = buildRegistrationPayload({
+    deviceId: 'cleess-33',
+    hostname: 'CLESS-33',
+    ip: '192.168.1.33',
+    monitors: [
+      { id: '1', name: 'Monitor 1', index: 0, x: 0, y: 0, width: 1920, height: 1080, primary: true, online: true },
+      { id: '2', name: 'Monitor 2', index: 1, x: 1920, y: 0, width: 1920, height: 1080, primary: false, online: true },
+      { id: '3', name: 'Monitor 3', index: 2, x: 3840, y: 0, width: 1280, height: 1024, primary: false, online: true }
+    ],
+    capabilities: { multiMonitor: true, monitorSelection: true, screenCrop: true }
+  })
+  assert.equal(payload.deviceId, 'cleess-33')
+  assert.equal(payload.monitors.length, 3)
+  assert.equal(payload.monitors[1].id, '2')
+  assert.equal(payload.monitors[2].x, 3840)
+  assert.equal(payload.capabilities.multiMonitor, true)
+})
+
 test('mdns hostname is reported without doubling .local', () => {
   const { mdnsHostname } = require('../lib/host-names')
   assert.equal(mdnsHostname('CLT-27AIO'), 'CLT-27AIO.local')
