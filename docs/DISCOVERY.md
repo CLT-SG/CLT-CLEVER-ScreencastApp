@@ -37,7 +37,7 @@ Wait for server responses (configurable timeout, default 4s)
       ↓
 Collect discovered servers (dedupe by hostname/port or server id)
       ↓
-Show results — or “No CLEVER-Service servers discovered”
+Show results or “No CLEVER-Service servers discovered”
       ↓
 Retry after configured interval (default 8s, backoff to 30s)
 ```

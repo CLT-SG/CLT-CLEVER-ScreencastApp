@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- **Node.js 18+** (Node 22 recommended — see [`.nvmrc`](../.nvmrc))
+- **Node.js 18+** (Node 22 recommended see [`.nvmrc`](../.nvmrc))
 - **npm 9+**
 - A VNC server on the local machine (for example TightVNC, UltraVNC, or RealVNC) listening on port `5900` (additional screens on `5901`–`5905` are detected automatically)
 - Optional: a running [CLEVER-Service](https://github.com/CLT-SG/CLEVER-Service) instance on the LAN for discovery, registration, and heartbeats
