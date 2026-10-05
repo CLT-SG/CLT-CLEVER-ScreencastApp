@@ -50,7 +50,9 @@ Runtime settings live in [`config.js`](../config.js):
 | `audio` / `systemAudio` / `microphone` / `speakerOutput` / `twoWayAudio` | Independent WebRTC audio (dashboard Audio panel; off by default) |
 | `autorestart` | Cache-clear interval |
 
-The HTTPS/websockify server must listen on `0.0.0.0`, not `127.0.0.1`. Remote CLEVER Video Wall and Console browsers open `wss://<ScreencastApp-LAN-IP>:8840/screen0` directly. Registration with CLEVER-Service only proves discovery; it does not open the host firewall. Allow inbound TCP `8840` on the ScreencastApp machine for LAN clients. Local VNC forwarding still uses `127.0.0.1:5900+`.
+The HTTPS/websockify server must listen on `0.0.0.0`, not `127.0.0.1`. Remote CLEVER Video Wall and Console browsers open `wss://<ScreencastApp-LAN-IP>:8840/screen0` directly. Registration with CLEVER-Service only proves discovery; it does not open the host firewall. Allow inbound TCP `8840` on the ScreencastApp machine for LAN clients.
+
+Local VNC is dialed via the machine LAN IP when known (`192.168.x.x:5900`), with `127.0.0.1:5900` as a TCP fallback. Dialing only loopback makes UltraVNC/TightVNC reject RFB with `Sorry, loopback connections are not enabled` unless "Allow Loopback Connections" is enabled in the VNC server.
 
 `GET https://<host>:8840/status` returns the bind address and published `/screenN` paths for remote probes.
 
