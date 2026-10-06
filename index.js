@@ -34,6 +34,7 @@ const { normalizeAudioConfig, configLine } = require('./lib/audio-config')
 const { createUpdater } = require('./lib/updater')
 const { createAssetLoader } = require('./lib/assets')
 const { createStatusHandler } = require('./lib/http-status')
+const { createStartupWindowPolicy } = require('./lib/startup-window')
 
 // Configure logging
 var log = require('electron-log')
@@ -240,6 +241,27 @@ let updater = null
 let assetLoader = null
 let trayIdleImage = null
 let trayPublishImage = null
+let startupWindowPolicy = null
+
+function showMainWindow() {
+  if (!win || win.isDestroyed()) {
+    return
+  }
+  if (win.isMinimized()) {
+    win.restore()
+  }
+  win.show()
+  win.focus()
+  log.info('[Window] Main window shown from tray/request')
+}
+
+function hideMainWindowToTray() {
+  if (!win || win.isDestroyed()) {
+    return
+  }
+  // Hide only — never quit or tear down background services.
+  win.hide()
+}
 
 const vncport = (process.platform == 'linux') ? '5900' : '5900'
 const screencastAutoLaunch = new AutoLaunch({
@@ -363,12 +385,9 @@ try {
   } else {
     app.on('second-instance', (event, commandLine, workingDirectory) => {
       // Someone tried to run a second instance, we should focus our window
-      if (win) {
-        if (win.isMinimized()) {
-          log.info("Restore process.")
-          win.show()
-        }
-        win.focus()
+      if (win && !win.isDestroyed()) {
+        log.info('[Window] Second instance requested; restoring main window')
+        showMainWindow()
       }
     })
 
@@ -418,10 +437,36 @@ try {
     // App startup config
     app.whenReady().then(() => {
       try {
+      log.info('[Startup] ScreencastApp initialization started')
       const trayImages = loadTrayImages()
       // Create main window
       win = createMainWindow(trayIdleImage)
-      
+      log.info('[Window] Main window created')
+
+      startupWindowPolicy = createStartupWindowPolicy({
+        autoHideEnabled: config.appearance?.autoHideToTray !== false,
+        onHide: () => hideMainWindowToTray(),
+        onKeepVisible: () => {
+          log.info('[Window] Startup complete; user is focusing the window')
+        },
+        logInfo: (msg) => log.info(msg)
+      })
+
+      // Track focus for startup auto-hide (must not quit or stop services).
+      win.on('focus', () => {
+        if (startupWindowPolicy) {
+          startupWindowPolicy.setFocused(true)
+        }
+      })
+      win.on('blur', () => {
+        if (startupWindowPolicy) {
+          startupWindowPolicy.setFocused(false)
+        }
+      })
+      if (win.isFocused()) {
+        startupWindowPolicy.setFocused(true)
+      }
+
       // Add CSS to hide scrollbars at application level
       win.webContents.on('did-finish-load', () => {
         win.webContents.insertCSS(`
@@ -437,6 +482,9 @@ try {
         }).catch((err) => {
           log.warn(`[startup] Failed to insert scrollbar CSS: ${err.message}`)
         })
+        if (startupWindowPolicy) {
+          startupWindowPolicy.markUiReady()
+        }
       })
 
       // Auto startup settings
@@ -480,7 +528,13 @@ try {
         {
           label: 'Show Application',
           click: function () {
-            win.show()
+            showMainWindow()
+          }
+        },
+        {
+          label: 'Hide Window',
+          click: function () {
+            hideMainWindowToTray()
           }
         },
         {
@@ -562,10 +616,7 @@ try {
             if (updater) {
               updater.checkForUpdates({ reason: 'tray' })
             }
-            if (win) {
-              win.show()
-              win.focus()
-            }
+            showMainWindow()
           }
         },
         {
@@ -659,7 +710,7 @@ try {
       })
       
       ipcMain.handle('close-window', () => {
-        win.hide()
+        hideMainWindowToTray()
       })
       
       ipcMain.handle('open-about', async () => {
@@ -797,25 +848,27 @@ try {
 
       // Set tray context menu
       appIcon.setContextMenu(contextMenu)
+      if (startupWindowPolicy) {
+        startupWindowPolicy.markTrayReady()
+      }
 
-      // Fix double-click behavior to properly show window
+      // Fix double-click behavior to properly show/hide window
       appIcon.on('double-click', () => {
         if (!win.isVisible()) {
-          win.show()
-          win.focus()
+          showMainWindow()
         } else {
-          win.hide()
+          hideMainWindowToTray()
         }
       })
 
       // Set up auto reload based on config
       setupAutoReload(config.autorestart)
 
-      // Window events
+      // Window events — close/minimize hide to tray; Quit menu exits the app.
       win.on('close', (event) => {
         if (!app.isQuiting) {
           event.preventDefault()
-          win.hide()
+          hideMainWindowToTray()
           return false
         }
         return true
@@ -823,25 +876,18 @@ try {
       
       win.on('minimize', (event) => {
         event.preventDefault()
-        win.hide()
+        hideMainWindowToTray()
       })
 
       // Track window visibility for tray double-click handler
       win.on('hide', () => {
-        log.info('Window hidden')
+        log.info('[Window] Window hidden')
       })
 
       win.on('show', () => {
-        log.info('Window shown')
+        log.info('[Window] Window shown')
         win.focus() // Ensure window is focused when shown
       })
-
-      // Auto hide after configured time (or 5 seconds by default)
-      if (config.appearance?.showSplash !== false) {
-        setTimeout(() => {
-          win.hide()
-        }, config.appearance?.splashDuration || 5000)
-      }
 
       // Register dev tools shortcut
       globalShortcut.register('CommandOrControl+D', () => {
@@ -947,6 +993,9 @@ async function checkVncAndOpenWindow() {
       log.info(`Host information: IP=${hostInfo.ip}, Hostname=${hostInfo.hostname}, Hostname.local=${hostInfo.hostnameLocal}`)
       await publishVncTargets()
       startConnectionManager()
+      if (startupWindowPolicy) {
+        startupWindowPolicy.markServicesReady()
+      }
 
       // Auto-start sharing if enabled in config
       if (config.autoshare) {

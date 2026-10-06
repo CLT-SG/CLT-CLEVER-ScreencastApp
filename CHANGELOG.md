@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Focus-aware automatic hide to the system tray after startup (UI loaded + tray + required services ready); stays visible while the user is focusing the window, then may hide on blur
+- Tray menu **Hide Window** alongside **Show Application**
+- Startup/window/tray lifecycle logging (`[Startup]`, `[Window]`, `[Tray]`)
+
 ### Changed
 - Registration/heartbeat continue to advertise the full multi-monitor layout so CLEVER-Service can bind multiple Screencast records to the same device (`device_id` + `monitor_id`).
+- Replaced the old splash-duration timeout hide with Electron lifecycle-driven startup hide (`appearance.autoHideToTray`)
 
 ## [2.4.0] - 2026-09-16
 

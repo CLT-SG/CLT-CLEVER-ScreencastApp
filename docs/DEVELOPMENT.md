@@ -47,6 +47,7 @@ Runtime settings live in [`config.js`](../config.js):
 | `server.scanPorts` | VNC ports to probe (`5900`–`5905`) |
 | `cleverService` | Discovery UDP port, default HTTP port, discovery timeout/retry. Host/IP are **never** hardcoded |
 | `autostartup` / `autoshare` | Tray and dashboard checkboxes |
+| `appearance.autoHideToTray` | After startup, hide the main window to the tray when it is not focused (default `true`) |
 | `audio` / `systemAudio` / `microphone` / `speakerOutput` / `twoWayAudio` | Independent WebRTC audio (dashboard Audio panel; off by default) |
 | `autorestart` | Cache-clear interval |
 
@@ -77,6 +78,7 @@ The dashboard **consumes** existing modules. It does not open a second registrat
 | Module | Responsibility |
 | --- | --- |
 | `index.js` | Electron main process, window, tray, IPC |
+| `lib/startup-window.js` | Focus-aware startup auto-hide-to-tray policy (no service shutdown) |
 | `lib/connection-manager.js` | Discovery, registration, heartbeat, reconnect, monitor sync |
 | `lib/discovery.js` | UDP CLEVER-Service discovery (LAN interfaces, timeout/retry, multi-server) |
 | `lib/server-session.js` | Per-server probe, registration, heartbeat, reconnect |

@@ -49,9 +49,11 @@ exports.cleverService = {
 
 // Appearance settings
 exports.appearance = {
-  theme: 'dark',       // UI theme ('dark' or 'light')
-  showSplash: false,   // Keep the dashboard visible after launch
-  splashDuration: 5000 // Duration used only when showSplash is true
+  theme: 'dark',          // UI theme ('dark' or 'light')
+  // After UI + required services are ready, hide the main window to the
+  // system tray when it is not focused. If the user is actively focusing
+  // the window, it stays visible until they leave it (blur).
+  autoHideToTray: true
 }
 
 // Debug and logging settings

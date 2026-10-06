@@ -39,6 +39,18 @@ test('main process uses centralized asset loading instead of development-only pa
   assert.match(index, /loadNativeImage/)
 })
 
+test('main process uses focus-aware startup tray hide instead of splash timeout', () => {
+  const index = fs.readFileSync(path.join(__dirname, '../index.js'), 'utf8')
+  const config = fs.readFileSync(path.join(__dirname, '../config.js'), 'utf8')
+  assert.match(index, /createStartupWindowPolicy/)
+  assert.match(index, /markServicesReady/)
+  assert.match(index, /markUiReady/)
+  assert.match(index, /markTrayReady/)
+  assert.match(index, /hideMainWindowToTray/)
+  assert.equal(index.includes('splashDuration'), false)
+  assert.match(config, /autoHideToTray/)
+})
+
 test('release and ci workflows exist with a Windows/Linux/macOS matrix', () => {
   const release = fs.readFileSync(path.join(__dirname, '../.github/workflows/release.yml'), 'utf8')
   const ci = fs.readFileSync(path.join(__dirname, '../.github/workflows/ci.yml'), 'utf8')
