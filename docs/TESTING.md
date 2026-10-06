@@ -6,7 +6,7 @@ New coverage:
 
 | File | What it verifies |
 | --- | --- |
-| [`test/updater.test.js`](../test/updater.test.js) | Check / no-update / download / ready / failure / unpackaged / delayed auto-check |
+| [`test/updater.test.js`](../test/updater.test.js) | Check / no-update / download / ready / failure / unpackaged / delayed auto-check / Linux AppImage + `.deb` install / exit 127 mapping / package validation |
 | [`test/dashboard-state.test.js`](../test/dashboard-state.test.js) | Dashboard mapping of connection, updater, monitors, VNC, timestamps, multi-server discovery |
 | [`test/version.test.js`](../test/version.test.js) | GitHub publish config and release workflow matrix |
 

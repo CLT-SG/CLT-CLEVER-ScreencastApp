@@ -59,6 +59,17 @@ An update check never blocks discovery, registration, heartbeat, VNC, or monitor
 - Automatic **download**: yes (`autoDownload`)
 - Automatic **restart**: no. The user is notified when the update is ready and can install immediately or later. `autoInstallOnAppQuit` still applies the downloaded update if the user quits the app.
 
+## Linux install behaviour
+
+| Installed as | Update artifact | Install path |
+| --- | --- | --- |
+| AppImage (`APPIMAGE` set) | `.AppImage` from `latest-linux.yml` | Validate package → ensure `+x` → `quitAndInstall` (electron-updater AppImageUpdater) |
+| `.deb` (`resources/package-type` = `deb`) | `.deb` from `latest-linux.yml` | Validate package → `pkexec /bin/bash -c 'dpkg -i …'` (no `--disable-internal-agent`) → `app.relaunch()` |
+
+Ubuntu Desktop installs from the `.deb` previously failed with **Update request failed 127**. That exit code came from electron-updater’s DebUpdater invoking `pkexec --disable-internal-agent`, which returns `127` when no Polkit session agent answers. ScreencastApp now installs `.deb` updates through a platform-specific path that keeps the graphical auth dialog available, validates the downloaded package first, and leaves CLEVER-Service / VNC running if install does not start.
+
+AppImage remains the preferred zero-elevation auto-update format.
+
 ## Failure handling
 
 The application keeps running when:
@@ -68,8 +79,10 @@ The application keeps running when:
 - no release (or no `latest.yml`) exists
 - update metadata is invalid
 - the download fails
+- Linux package validation fails (missing, empty, wrong format, or not executable)
+- Linux `.deb` elevation / `dpkg` install fails
 
-Errors are logged and shown on the dashboard. Failed checks retry with exponential backoff (30s → 1h max).
+Errors are logged and shown on the dashboard. Failed checks retry with exponential backoff (30s → 1h max). Linux install failures surface a clear Ubuntu message instead of a raw exit code.
 
 ## Private repository note
 
@@ -89,6 +102,8 @@ This repository is private. Unauthenticated `releases.atom` / `latest.yml` reque
 | `GitHub is unreachable` | Network / proxy / firewall; the app continues to work locally |
 | Download starts then fails | Confirm the installer artifact and `.blockmap` were uploaded for that OS |
 | macOS does not update | The release must include the `.zip` artifact, not only the `.dmg` |
-| Linux does not update | Use the AppImage install, not only the `.deb` |
+| Linux does not update | Prefer the AppImage; `.deb` updates need a Polkit password prompt via `pkexec` |
+| `Update request failed 127` / Ubuntu install failed | Fixed in the Linux install path: check `~/clevervnc-log/` for `[Updater]` diagnostics (package path, permissions, installer exit code) |
+| AppImage downloads but will not restart | Confirm the downloaded `.AppImage` exists under the updater cache and is executable (`-rwxr-xr-x`) |
 
 Update events are written to `~/clevervnc-log/YYYY-MM-DD.log`.
