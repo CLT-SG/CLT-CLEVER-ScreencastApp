@@ -21,4 +21,15 @@ CLEVER-Service ingest, force-sync MediaMTX paths.
 Low-latency RTSP work in CLEVER-Service / CLEVER-node does not change
 ScreencastApp’s VNC or audio signalling. Keep deploying ScreencastApp for VNC
 desktops; encoder KVM boxes continue to publish RTSP that MediaMTX pulls
-directly (no FFmpeg republish by default).
+(with optional WebRTC-safe audio remux in CLEVER-Service).
+
+### RTSP recovery ownership
+
+Automatic recovery after an RTSP camera / KVM-ENC restart is handled by:
+
+- **CLEVER-Service** — MediaMTX path lifecycle and stale-source force-replace
+- **CLEVER-node** — WHEP session recreate, stall detection, UI reconnect states
+- **CLEVER-Player** — hosts the webview only (no full-window reload required)
+
+ScreencastApp must not be restarted or reconfigured for RTSP recovery. Leave
+unrelated VNC sessions alone when encoder RTSP paths recover.
