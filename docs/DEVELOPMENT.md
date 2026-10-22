@@ -71,6 +71,18 @@ openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes \
 
 CLEVER-Service connection mode (automatic discovery vs manual host/port) is stored in Electron `userData` as `clever-service.json`. The stable device id is stored as `device-id.json` in the same directory.
 
+## Source catalogs vs device heartbeats
+
+Assignable source lists (templates drawer, Console/Video Wall pickers) are cached and revised by **CLEVER-Service**. This app only publishes device/monitor metadata via register + heartbeat.
+
+| Concern | Owner |
+| --- | --- |
+| Source catalog metadata + revision | CLEVER-Service (`/api/sources/assignable`) |
+| Device online / `connection_status` | Heartbeat + Service status sweep (does **not** invalidate source metadata revision) |
+| Live RFB reachability | CLEVER-node `/probe` + local `GET /status` |
+
+Do not store VNC passwords or session tokens in any general-purpose cache. View-only enforcement remains on the WebSocket query (`view_only` / `session_mode`) as documented in [VIEW_ONLY.md](./VIEW_ONLY.md).
+
 ## Architecture (do not duplicate)
 
 The dashboard **consumes** existing modules. It does not open a second registration, discovery, or VNC channel.
