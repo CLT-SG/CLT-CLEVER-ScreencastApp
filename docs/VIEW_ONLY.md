@@ -17,3 +17,10 @@ CLEVER-node `/screencast` (Video Wall) always requests view-only. Console
 
 This app must remain on **Electron 22.3.25**. Do not upgrade Electron as part of
 device-management features. A unit test asserts the pinned version.
+
+## CLEVER-Player role changes
+
+ScreencastApp does not store Video Wall / Console roles. When CLEVER-Player switches
+from Console to Video Wall, it reloads its preview and opens `/screencast` (with
+`view_only=1` on the WebSocket). Existing interactive Console sessions are dropped
+with that reload; this bridge continues to filter input whenever `view_only=1` is set.
