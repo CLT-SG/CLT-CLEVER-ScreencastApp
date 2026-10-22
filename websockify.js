@@ -5,6 +5,7 @@ const log = require('electron-log');
 const { mdnsHostname } = require('./lib/host-names');
 const { createRoutedServer, isAudioPath } = require('./lib/ws-router');
 const { isLoopbackDisabledReason } = require('./lib/vnc-scan');
+const { isViewOnlyRequest, filterClientPayload } = require('./lib/rfb-view-only');
 
 const attached = new WeakMap()
 
@@ -24,7 +25,7 @@ function parseTarget(target) {
   }
 }
 
-function pipeVncSocket(ws, matchingTarget, remote, pathname) {
+function pipeVncSocket(ws, matchingTarget, remote, pathname, viewOnly) {
   const primary = parseTarget(matchingTarget.target)
   const alternate = parseTarget(matchingTarget.alternateTarget)
   if (!primary || !primary.host || !primary.port) {
@@ -40,6 +41,9 @@ function pipeVncSocket(ws, matchingTarget, remote, pathname) {
   let clientClosed = false
   let tcpConnection = null
   let usingAlternate = false
+  if (viewOnly) {
+    log.info(`View-only RFB filter enabled for ${remote} ${pathname}`)
+  }
 
   const closeSocket = (code, reason) => {
     if (clientClosed) {
@@ -108,8 +112,12 @@ function pipeVncSocket(ws, matchingTarget, remote, pathname) {
 
   ws.on('message', function(message) {
     const payload = Buffer.isBuffer(message) ? message : Buffer.from(message)
+    const filtered = filterClientPayload(payload, viewOnly)
+    if (filtered == null) {
+      return
+    }
     if (tcpConnection && !tcpConnection.destroyed) {
-      tcpConnection.write(payload)
+      tcpConnection.write(filtered)
     }
   })
   ws.on('close', function(code, reason) {
@@ -182,7 +190,8 @@ function websockify(server, targets) {
       }
 
       if (matchingTarget) {
-        pipeVncSocket(ws, matchingTarget, remote, pathname)
+        const viewOnly = isViewOnlyRequest(req)
+        pipeVncSocket(ws, matchingTarget, remote, pathname, viewOnly)
       } else {
         const known = currentTargets.map(t => t.path).join(', ') || '(none)'
         log.warn(`Rejected remote client ${remote}: no VNC target for path ${pathname}; known paths: ${known}`)
