@@ -24,3 +24,10 @@ ScreencastApp does not store Video Wall / Console roles. When CLEVER-Player swit
 from Console to Video Wall, it reloads its preview and opens `/screencast` (with
 `view_only=1` on the WebSocket). Existing interactive Console sessions are dropped
 with that reload; this bridge continues to filter input whenever `view_only=1` is set.
+
+## Session approval prompts
+
+CLEVER no longer shows noVNC’s RSA “Approve” dialog for managed Console/Video Wall
+sessions. If a prompt still appears **on the remote PC**, it is typically UltraVNC
+**QueryConnect** / “Accept incoming connections” — disable that in the VNC server
+settings so authorized Console operators connect without a host-side click.
