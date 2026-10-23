@@ -68,7 +68,7 @@ Logs are written to `~/clevervnc-log/` with an `[audio]` prefix.
 | Symptom | Check |
 | --- | --- |
 | Status stays Disabled | Enable System Audio or Microphone in the Audio panel |
-| Status stays Waiting for Client | No viewer has joined `wss://host:wsPort/audio` yet. Open the source in CLEVER-Player Video Wall/Console with System Audio enabled here (or Audio Stream under `/screencasts`). VNC alone (`/screen0`) does not register an audio client. Check **Clients** stays at 0 if audio seems stuck. |
+| Status stays Waiting for Client | No viewer has joined `wss://host:wsPort/audio` yet. Deploy CLEVER-node / CLEVER-Service / Player builds that auto-subscribe registered ScreencastApp slots, then reload the Video Wall or Console slot. VNC alone (`/screen0`) does not register an audio client. Check **Clients** stays at 0 if audio seems stuck. |
 | Status Error, VNC still works | Expected. Read the error line; VNC is independent |
 | macOS has no system audio | Install BlackHole (or similar) and restart |
 | Player cannot hear audio | Confirm Clients > 0 and Capture Active; confirm `wss://host:wsPort/audio` is reachable |

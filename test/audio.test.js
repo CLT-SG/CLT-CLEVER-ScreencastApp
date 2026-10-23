@@ -125,6 +125,13 @@ test('registration payload includes webrtc audio transport on the websockify por
   assert.equal(payload.capabilities.audio.transport, 'webrtc')
 })
 
+test('audio bridge applies player hello feature flags like control', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../lib/audio-bridge.js'), 'utf8')
+  assert.match(src, /message\.type === 'hello'/)
+  assert.match(src, /message\.systemAudio/)
+  assert.match(src, /fromClient: true/)
+})
+
 test('signaling parser ignores non-json frames', () => {
   assert.equal(parseJson('{"type":"offer"}').type, 'offer')
   assert.equal(parseJson('not-json'), null)
