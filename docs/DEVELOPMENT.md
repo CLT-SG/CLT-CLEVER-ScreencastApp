@@ -48,6 +48,8 @@ Runtime settings live in [`config.js`](../config.js):
 | `cleverService` | Discovery UDP port, default HTTP port, discovery timeout/retry. Host/IP are **never** hardcoded |
 | `autostartup` / `autoshare` | Tray and dashboard checkboxes |
 | `appearance.autoHideToTray` | After startup, hide the main window to the tray when it is not focused (default `true`) |
+
+Closing or minimizing the dashboard **does not** stop remote sharing. Websockify on `server.port` keeps serving Video Wall / Console while the tray icon is present. Use tray **Stop Sharing** to drop active VNC/audio viewers (and reject new ones), or tray / menu **Quit** to close the HTTPS server and exit the process.
 | `audio` / `systemAudio` / `microphone` / `speakerOutput` / `twoWayAudio` | Independent WebRTC audio (dashboard Audio panel; off by default) |
 | `autorestart` | Cache-clear interval |
 
@@ -91,6 +93,7 @@ The dashboard **consumes** existing modules. It does not open a second registrat
 | --- | --- |
 | `index.js` | Electron main process, window, tray, IPC |
 | `lib/startup-window.js` | Focus-aware startup auto-hide-to-tray policy (no service shutdown) |
+| `lib/vnc-share.js` | Pause / disconnect remote websockify viewers for Stop Sharing and Quit |
 | `lib/connection-manager.js` | Discovery, registration, heartbeat, reconnect, monitor sync |
 | `lib/discovery.js` | UDP CLEVER-Service discovery (LAN interfaces, timeout/retry, multi-server) |
 | `lib/server-session.js` | Per-server probe, registration, heartbeat, reconnect |
