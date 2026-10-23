@@ -29,5 +29,5 @@ with that reload; this bridge continues to filter input whenever `view_only=1` i
 
 CLEVER no longer shows noVNC’s RSA “Approve” dialog for managed Console/Video Wall
 sessions. If a prompt still appears **on the remote PC**, it is typically UltraVNC
-**QueryConnect** / “Accept incoming connections” — disable that in the VNC server
+**QueryConnect** / “Accept incoming connections” disable that in the VNC server
 settings so authorized Console operators connect without a host-side click.

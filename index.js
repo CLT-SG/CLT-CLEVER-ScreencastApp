@@ -259,7 +259,7 @@ function hideMainWindowToTray() {
   if (!win || win.isDestroyed()) {
     return
   }
-  // Hide only — never quit or tear down background services.
+  // Hide only never quit or tear down background services.
   win.hide()
 }
 
@@ -864,7 +864,7 @@ try {
       // Set up auto reload based on config
       setupAutoReload(config.autorestart)
 
-      // Window events — close/minimize hide to tray; Quit menu exits the app.
+      // Window events close/minimize hide to tray; Quit menu exits the app.
       win.on('close', (event) => {
         if (!app.isQuiting) {
           event.preventDefault()

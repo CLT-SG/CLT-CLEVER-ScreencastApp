@@ -76,7 +76,7 @@ Installers are also uploaded as Actions artifacts for 14 days for debugging.
 
 Do **not** hardcode tokens in source.
 
-Optional code-signing secrets — unsigned installers are still produced when they are absent:
+Optional code-signing secrets unsigned installers are still produced when they are absent:
 
 | Secret | Purpose |
 | --- | --- |

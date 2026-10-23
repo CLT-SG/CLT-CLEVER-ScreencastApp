@@ -44,10 +44,10 @@ test('dashboard grid prioritizes Screencast details and Audio height', () => {
 })
 
 test('audio status distinguishes waiting for client from active capture', () => {
-  assert.match(renderer, /Audio Enabled — Waiting for Client/)
+  assert.match(renderer, /Audio Enabled Waiting for Client/)
   assert.match(renderer, /Idle \(waiting for remote audio client\)/)
   assert.match(renderer, /Capture Active/)
   assert.match(renderer, /audio-clients-label/)
   assert.match(renderer, /clientCount > 0/)
-  assert.match(renderer, /Client Connected — Starting Capture/)
+  assert.match(renderer, /Client Connected Starting Capture/)
 })

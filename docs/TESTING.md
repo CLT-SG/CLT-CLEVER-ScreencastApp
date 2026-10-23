@@ -18,7 +18,7 @@ Hardware-dependent; not fully covered by unit tests.
 
 1. Start ScreencastApp on a supported OS (Windows loopback, Linux Pulse/PipeWire monitor, or macOS with BlackHole).
 2. Confirm device registration with CLEVER-Service succeeds.
-3. Enable **System Audio** in ScreencastApp; status should show **Audio Enabled — Waiting for Client**.
+3. Enable **System Audio** in ScreencastApp; status should show **Audio Enabled Waiting for Client**.
 4. In CLEVER-Service `/screencasts`, enable **Audio Stream** for the matching Screencast VNC source and save.
 5. Open the source in an authorized CLEVER-Player VNC previewer (Video Wall or Console).
 6. Confirm ScreencastApp **Clients ≥ 1** and **Capture Active**; play a known test tone on the remote PC and hear it in the player.

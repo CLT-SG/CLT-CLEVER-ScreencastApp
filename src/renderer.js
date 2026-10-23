@@ -533,7 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const AUDIO_STATES = {
     disabled: { text: 'Audio Disabled', css: 'offline' },
     starting: { text: 'Capture Initializing', css: 'searching' },
-    enabled: { text: 'Audio Enabled — Waiting for Client', css: 'ready' },
+    enabled: { text: 'Audio Enabled: Waiting for Client', css: 'ready' },
     connected: { text: 'Audio Streaming', css: 'online' },
     reconnecting: { text: 'Connection Lost', css: 'reconnecting' },
     error: { text: 'Error', css: 'offline' },
@@ -566,7 +566,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state === 'connected') {
           label.textContent = `Audio Streaming (${clientCount} client${clientCount === 1 ? '' : 's'})`;
         } else if (state === 'starting' || state === 'enabled') {
-          label.textContent = `Client Connected — Starting Capture (${clientCount})`;
+          label.textContent = `Client Connected: Starting Capture (${clientCount})`;
         } else if (state === 'reconnecting') {
           label.textContent = `Connection Lost (${clientCount} client${clientCount === 1 ? '' : 's'})`;
         } else {
@@ -600,7 +600,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (state === 'starting') {
           captureLabel.textContent = 'Capture Initializing';
         } else {
-          captureLabel.textContent = 'Client Connected — Waiting for capture';
+          captureLabel.textContent = 'Client Connected: Waiting for capture';
         }
       }
     }
