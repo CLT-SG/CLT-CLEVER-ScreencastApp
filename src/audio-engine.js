@@ -3,6 +3,8 @@
   const peers = new Map()
   const remoteAudio = new Map()
   const offerChains = new Map()
+  const recoverTimers = new Map()
+  let deviceChangeTimer = null
   let config = {
     systemAudio: false,
     microphone: false,
@@ -234,7 +236,16 @@
     el.play().catch((err) => log('warn', 'remote audio play blocked: ' + err.message))
   }
 
+  function clearRecoverTimer(clientId) {
+    const timer = recoverTimers.get(clientId)
+    if (timer) {
+      clearTimeout(timer)
+      recoverTimers.delete(clientId)
+    }
+  }
+
   function closePeer(clientId) {
+    clearRecoverTimer(clientId)
     const pc = peers.get(clientId)
     if (pc) {
       try { pc.close() } catch (err) { /* ignore */ }
@@ -259,6 +270,72 @@
     reportStatus('enabled')
   }
 
+  /** Prefer connected peers; avoid sticky Connection Lost when one of many fails. */
+  function reportAggregateStatus(extra) {
+    if (peers.size === 0) {
+      // Mid-recovery peers are empty while signaling clients may still be joined.
+      reportStatus((extra && extra.error) ? 'reconnecting' : 'starting', extra)
+      return
+    }
+    let anyConnected = false
+    let anyConnecting = false
+    let anyBad = false
+    let badState = null
+    peers.forEach((pc) => {
+      const state = pc.connectionState
+      if (state === 'connected') anyConnected = true
+      else if (state === 'connecting' || state === 'new' || state === 'checking') anyConnecting = true
+      else if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+        anyBad = true
+        badState = state
+      }
+    })
+    if (anyConnected) {
+      reportStatus('connected', extra)
+      return
+    }
+    if (anyConnecting) {
+      reportStatus('starting', extra)
+      return
+    }
+    if (anyBad) {
+      reportStatus('reconnecting', {
+        error: (extra && extra.error) || ('WebRTC ' + (badState || 'interrupted'))
+      })
+    }
+  }
+
+  function requestPeerRenegotiate(clientId) {
+    send({
+      type: 'signal',
+      clientId,
+      message: { type: 'renegotiate' }
+    })
+  }
+
+  /**
+   * WebRTC often flips to disconnected briefly on LAN; wait before tearing
+   * down. failed is terminal — recreate via client renegotiate.
+   */
+  function schedulePeerRecovery(clientId, reason, delayMs) {
+    clearRecoverTimer(clientId)
+    const delay = delayMs == null ? (reason === 'failed' ? 400 : 2500) : delayMs
+    recoverTimers.set(clientId, setTimeout(() => {
+      recoverTimers.delete(clientId)
+      const pc = peers.get(clientId)
+      if (!pc) return
+      const state = pc.connectionState
+      if (state === 'connected' || state === 'connecting') {
+        reportAggregateStatus()
+        return
+      }
+      log('warn', 'recovering peer ' + clientId + ' after ' + state)
+      closePeer(clientId)
+      reportAggregateStatus({ error: 'Audio connection interrupted' })
+      requestPeerRenegotiate(clientId)
+    }, delay))
+  }
+
   async function ensurePeer(clientId) {
     if (peers.has(clientId)) {
       return peers.get(clientId)
@@ -278,9 +355,14 @@
     pc.onconnectionstatechange = () => {
       log('info', 'peer ' + clientId + ' ' + pc.connectionState)
       if (pc.connectionState === 'connected') {
-        reportStatus('connected')
-      } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-        reportStatus('reconnecting', { error: 'WebRTC ' + pc.connectionState })
+        clearRecoverTimer(clientId)
+        reportAggregateStatus()
+      } else if (pc.connectionState === 'failed') {
+        reportAggregateStatus({ error: 'WebRTC failed' })
+        schedulePeerRecovery(clientId, 'failed')
+      } else if (pc.connectionState === 'disconnected') {
+        reportAggregateStatus({ error: 'WebRTC disconnected' })
+        schedulePeerRecovery(clientId, 'disconnected')
       }
     }
     pc.ontrack = (event) => {
@@ -468,23 +550,58 @@
     }
   }
 
-  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
-    navigator.mediaDevices.addEventListener('devicechange', async () => {
-      log('info', 'audio devices changed')
-      await listDevices()
-      reportStatus(peers.size ? 'reconnecting' : 'enabled')
-      if (config.systemAudio && systemStream) {
+  async function refreshCaptureAfterDeviceChange() {
+    log('info', 'audio devices changed')
+    await listDevices()
+    // Do not flip the dashboard to Connection Lost for enumeration noise —
+    // Windows fires devicechange often during desktop/loopback capture.
+    if (!peers.size) {
+      reportStatus('enabled')
+      return
+    }
+    if (!config.systemAudio && !config.microphone && !config.twoWayAudio) {
+      reportAggregateStatus()
+      return
+    }
+    const needSystem = !!(config.systemAudio && systemStream)
+    const needMic = !!((config.microphone || config.twoWayAudio) && micStream)
+    if (!needSystem && !needMic) {
+      reportAggregateStatus()
+      return
+    }
+    try {
+      if (needSystem) {
         stopStream(systemStream)
         systemStream = null
-        try {
-          await captureSystemAudio()
-          for (const pc of peers.values()) {
-            await addLocalTracks(pc)
-          }
-        } catch (err) {
-          reportStatus('error', { error: err.message })
-        }
+        await captureSystemAudio()
       }
+      if (needMic) {
+        stopStream(micStream)
+        micStream = null
+        await captureMicrophone()
+      }
+      const ids = Array.from(peers.keys())
+      for (const id of ids) {
+        const pc = peers.get(id)
+        if (!pc) continue
+        await addLocalTracks(pc)
+        requestPeerRenegotiate(id)
+      }
+      reportAggregateStatus()
+    } catch (err) {
+      reportStatus('error', { error: err.message })
+    }
+  }
+
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+    navigator.mediaDevices.addEventListener('devicechange', () => {
+      if (deviceChangeTimer) clearTimeout(deviceChangeTimer)
+      deviceChangeTimer = setTimeout(() => {
+        deviceChangeTimer = null
+        refreshCaptureAfterDeviceChange().catch((err) => {
+          log('warn', 'devicechange refresh failed: ' + err.message)
+        })
+      }, 750)
     })
   }
 
