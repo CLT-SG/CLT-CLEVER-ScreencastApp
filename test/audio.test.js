@@ -130,6 +130,16 @@ test('audio bridge applies player hello feature flags like control', () => {
   assert.match(src, /message\.type === 'hello'/)
   assert.match(src, /message\.systemAudio/)
   assert.match(src, /fromClient: true/)
+  assert.match(src, /Do not forward hello into the WebRTC engine/)
+})
+
+test('audio engine renegotiates only the controlling client by default', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../src/audio-engine.js'), 'utf8')
+  assert.match(src, /queueOffer/)
+  assert.match(src, /handleControl\(clientId, message\)/)
+  assert.match(src, /captureChanged/)
+  assert.match(src, /replacing peer/)
+  assert.match(src, /signalingState !== 'stable'/)
 })
 
 test('signaling parser ignores non-json frames', () => {
