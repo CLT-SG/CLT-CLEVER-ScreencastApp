@@ -560,8 +560,18 @@ document.addEventListener('DOMContentLoaded', () => {
       dot.className = `status-dot ${info.css}`;
     }
     if (label) {
-      if (state === 'connected' && clientCount > 0) {
-        label.textContent = `Audio Streaming (${clientCount} client${clientCount === 1 ? '' : 's'})`;
+      // Prefer client count over state text so a stuck "enabled" snapshot
+      // cannot keep showing "Waiting for Client" after viewers join /audio.
+      if (clientCount > 0) {
+        if (state === 'connected') {
+          label.textContent = `Audio Streaming (${clientCount} client${clientCount === 1 ? '' : 's'})`;
+        } else if (state === 'starting' || state === 'enabled') {
+          label.textContent = `Client Connected — Starting Capture (${clientCount})`;
+        } else if (state === 'reconnecting') {
+          label.textContent = `Connection Lost (${clientCount} client${clientCount === 1 ? '' : 's'})`;
+        } else {
+          label.textContent = `${info.text} (${clientCount} client${clientCount === 1 ? '' : 's'})`;
+        }
       } else {
         label.textContent = info.text;
       }

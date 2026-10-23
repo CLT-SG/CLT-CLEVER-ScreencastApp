@@ -68,7 +68,7 @@ Logs are written to `~/clevervnc-log/` with an `[audio]` prefix.
 | Symptom | Check |
 | --- | --- |
 | Status stays Disabled | Enable System Audio or Microphone in the Audio panel |
-| Status stays Waiting for Client | Open the source in CLEVER-Player with Audio Stream enabled under `/screencasts` (`audio_system=1`). VNC alone (`/screen0`) does not register an audio client |
+| Status stays Waiting for Client | No viewer has joined `wss://host:wsPort/audio` yet. Open the source in CLEVER-Player Video Wall/Console with System Audio enabled here (or Audio Stream under `/screencasts`). VNC alone (`/screen0`) does not register an audio client. Check **Clients** stays at 0 if audio seems stuck. |
 | Status Error, VNC still works | Expected. Read the error line; VNC is independent |
 | macOS has no system audio | Install BlackHole (or similar) and restart |
 | Player cannot hear audio | Confirm Clients > 0 and Capture Active; confirm `wss://host:wsPort/audio` is reachable |
@@ -76,13 +76,13 @@ Logs are written to `~/clevervnc-log/` with an `[audio]` prefix.
 
 ## End-to-end viewer path
 
-1. Enable **System Audio** in ScreencastApp (host policy).
-2. In CLEVER-Service `/screencasts`, enable **Audio Stream** for the Screencast VNC source (`has_audio`).
+1. Enable **System Audio** in ScreencastApp (host policy). Status shows **Waiting for Client** until a viewer joins `/audio`.
+2. Optionally enable **Audio Stream** under CLEVER-Service `/screencasts` (`has_audio` → `audio_system=1` on preview URLs).
 3. Open the source in CLEVER-Player Video Wall or Console.
-4. noVNC receives `audio=1&audio_system=1` and auto-registers on `/audio`.
-5. ScreencastApp shows **Clients ≥ 1** and **Capture Active**; desktop audio plays in the viewer.
+4. CLEVER-node resolves the device, then auto-registers on `/audio` when `hasAudio` is true (Audio Stream **or** host System Audio capability).
+5. ScreencastApp shows **Clients ≥ 1** and **Capture Active** / **Audio Streaming**; desktop audio plays in the viewer.
 
-Capture still starts only while a remote `/audio` client is connected. Disabling Audio Stream removes `audio_system=1` so new viewers do not auto-subscribe (Settings can still enable audio manually when `audio=1` is present).
+Capture still starts only while a remote `/audio` client is connected. Turning System Audio off on the host (and clearing Audio Stream) stops new auto-subscribe; Settings can still enable audio manually when the Audio section is visible.
 
 ## Reconnection
 
