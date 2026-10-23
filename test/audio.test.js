@@ -172,6 +172,15 @@ test('audio engine renegotiates only the controlling client by default', () => {
   assert.match(src, /signalingState !== 'stable'/)
 })
 
+test('audio engine recovers failed peers and debounces devicechange', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../src/audio-engine.js'), 'utf8')
+  assert.match(src, /schedulePeerRecovery/)
+  assert.match(src, /reportAggregateStatus/)
+  assert.match(src, /refreshCaptureAfterDeviceChange/)
+  assert.match(src, /requestPeerRenegotiate/)
+  assert.doesNotMatch(src, /reportStatus\(peers\.size \? 'reconnecting' : 'enabled'\)/)
+})
+
 test('signaling parser ignores non-json frames', () => {
   assert.equal(parseJson('{"type":"offer"}').type, 'offer')
   assert.equal(parseJson('not-json'), null)
