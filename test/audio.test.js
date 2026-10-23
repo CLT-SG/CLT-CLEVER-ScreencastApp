@@ -43,6 +43,25 @@ test('windows reports system audio; macOS needs a loopback device', () => {
   assert.equal(inject.microphone_injection, true)
 })
 
+test('addClient always emits status so Clients count updates', () => {
+  const session = new AudioSession({
+    config: { systemAudio: true },
+    capabilities: { system_audio: true, microphone_capture: true, microphone_injection: false }
+  })
+  session.setState('starting')
+  let snaps = 0
+  let lastClients = 0
+  session.on('status', (snapshot) => {
+    snaps += 1
+    lastClients = snapshot.clients
+  })
+  session.addClient('vw-1')
+  assert.equal(lastClients, 1)
+  assert.ok(snaps >= 1)
+  session.addClient('vw-2')
+  assert.equal(lastClients, 2)
+})
+
 test('idle session does not capture', () => {
   const session = new AudioSession({
     config: { systemAudio: true },
