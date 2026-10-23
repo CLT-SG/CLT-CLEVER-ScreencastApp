@@ -43,6 +43,36 @@ test('windows reports system audio; macOS needs a loopback device', () => {
   assert.equal(inject.microphone_injection, true)
 })
 
+test('audio signaling source rejects clients when sharing is stopped', () => {
+  const fs = require('fs')
+  const path = require('path')
+  const signaling = fs.readFileSync(path.join(__dirname, '../lib/audio-signaling.js'), 'utf8')
+  const bridge = fs.readFileSync(path.join(__dirname, '../lib/audio-bridge.js'), 'utf8')
+  assert.match(signaling, /opts\.accepting/)
+  assert.match(signaling, /Sharing stopped/)
+  assert.match(bridge, /setAcceptingClients/)
+  assert.match(bridge, /disconnectClients/)
+})
+
+test('addClient always emits status so Clients count updates', () => {
+  const session = new AudioSession({
+    config: { systemAudio: true },
+    capabilities: { system_audio: true, microphone_capture: true, microphone_injection: false }
+  })
+  session.setState('starting')
+  let snaps = 0
+  let lastClients = 0
+  session.on('status', (snapshot) => {
+    snaps += 1
+    lastClients = snapshot.clients
+  })
+  session.addClient('vw-1')
+  assert.equal(lastClients, 1)
+  assert.ok(snaps >= 1)
+  session.addClient('vw-2')
+  assert.equal(lastClients, 2)
+})
+
 test('idle session does not capture', () => {
   const session = new AudioSession({
     config: { systemAudio: true },
@@ -123,6 +153,23 @@ test('registration payload includes webrtc audio transport on the websockify por
   assert.equal(payload.audioPort, 8840)
   assert.equal(payload.wsPort, 8840)
   assert.equal(payload.capabilities.audio.transport, 'webrtc')
+})
+
+test('audio bridge applies player hello feature flags like control', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../lib/audio-bridge.js'), 'utf8')
+  assert.match(src, /message\.type === 'hello'/)
+  assert.match(src, /message\.systemAudio/)
+  assert.match(src, /fromClient: true/)
+  assert.match(src, /Do not forward hello into the WebRTC engine/)
+})
+
+test('audio engine renegotiates only the controlling client by default', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../src/audio-engine.js'), 'utf8')
+  assert.match(src, /queueOffer/)
+  assert.match(src, /handleControl\(clientId, message\)/)
+  assert.match(src, /captureChanged/)
+  assert.match(src, /replacing peer/)
+  assert.match(src, /signalingState !== 'stable'/)
 })
 
 test('signaling parser ignores non-json frames', () => {

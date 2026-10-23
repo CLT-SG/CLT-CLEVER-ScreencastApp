@@ -123,6 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sharingEl = document.getElementById('sharing-status');
     const updateBadge = document.getElementById('update-badge');
     const vncBadge = document.getElementById('vnc-sharing-badge');
+    const vncSharingLabel = document.getElementById('vnc-sharing-label');
 
     if (overallEl) {
       overallEl.className = `badge tone-${overall.tone}`;
@@ -135,6 +136,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (vncBadge) {
       vncBadge.className = `badge tone-${overall.sharingTone}`;
       vncBadge.textContent = overall.sharingLabel;
+    }
+    if (vncSharingLabel) {
+      vncSharingLabel.textContent = overall.sharingLabel;
     }
     if (statusDot) {
       statusDot.className = `status-dot ${isConnected ? 'online' : 'offline'}`;
@@ -527,13 +531,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const AUDIO_STATES = {
-    disabled: { text: 'Disabled', css: 'offline' },
-    starting: { text: 'Starting', css: 'searching' },
-    enabled: { text: 'Enabled', css: 'ready' },
-    connected: { text: 'Connected', css: 'online' },
-    reconnecting: { text: 'Reconnecting', css: 'reconnecting' },
+    disabled: { text: 'Audio Disabled', css: 'offline' },
+    starting: { text: 'Capture Initializing', css: 'searching' },
+    enabled: { text: 'Audio Enabled: Waiting for Client', css: 'ready' },
+    connected: { text: 'Audio Streaming', css: 'online' },
+    reconnecting: { text: 'Connection Lost', css: 'reconnecting' },
     error: { text: 'Error', css: 'offline' },
-    unsupported: { text: 'Unsupported', css: 'offline' }
+    unsupported: { text: 'Audio Device Unavailable', css: 'offline' }
   };
 
   function applyAudioSnapshot(snapshot) {
@@ -543,6 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const dot = document.getElementById('audio-status-dot');
     const label = document.getElementById('audio-status-label');
     const captureLabel = document.getElementById('audio-capture-label');
+    const clientsLabel = document.getElementById('audio-clients-label');
     const capsLabel = document.getElementById('audio-caps-label');
     const errorLabel = document.getElementById('audio-error-label');
     const systemBox = document.getElementById('audio-system');
@@ -550,23 +555,53 @@ document.addEventListener('DOMContentLoaded', () => {
     const speakerBox = document.getElementById('audio-speaker');
     const twoWayBox = document.getElementById('audio-twoway');
     const cfg = snapshot.config || {};
+    const clientCount = Number(snapshot.clients) || 0;
     if (dot) {
       dot.className = `status-dot ${info.css}`;
     }
-    if (label) label.textContent = info.text;
+    if (label) {
+      // Prefer client count over state text so a stuck "enabled" snapshot
+      // cannot keep showing "Waiting for Client" after viewers join /audio.
+      if (clientCount > 0) {
+        if (state === 'connected') {
+          label.textContent = `Audio Streaming (${clientCount} client${clientCount === 1 ? '' : 's'})`;
+        } else if (state === 'starting' || state === 'enabled') {
+          label.textContent = `Client Connected: Starting Capture (${clientCount})`;
+        } else if (state === 'reconnecting') {
+          label.textContent = `Connection Lost (${clientCount} client${clientCount === 1 ? '' : 's'})`;
+        } else {
+          label.textContent = `${info.text} (${clientCount} client${clientCount === 1 ? '' : 's'})`;
+        }
+      } else {
+        label.textContent = info.text;
+      }
+    }
     if (systemBox && document.activeElement !== systemBox) systemBox.checked = !!cfg.systemAudio;
     if (micBox && document.activeElement !== micBox) micBox.checked = !!cfg.microphone;
     if (speakerBox && document.activeElement !== speakerBox) speakerBox.checked = cfg.speakerOutput !== false;
     if (twoWayBox && document.activeElement !== twoWayBox) twoWayBox.checked = !!cfg.twoWayAudio;
+    if (clientsLabel) {
+      clientsLabel.textContent = String(clientCount);
+    }
     if (captureLabel) {
       const capturing = snapshot.capturing || {};
-      if (!snapshot.clients) {
-        captureLabel.textContent = 'Idle (no remote audio client)';
+      if (state === 'disabled') {
+        captureLabel.textContent = 'Disabled';
+      } else if (state === 'unsupported') {
+        captureLabel.textContent = 'Unavailable';
+      } else if (clientCount === 0) {
+        captureLabel.textContent = 'Idle (waiting for remote audio client)';
       } else {
         const parts = [];
         if (capturing.systemAudio) parts.push('system');
         if (capturing.microphone) parts.push('microphone');
-        captureLabel.textContent = parts.length ? ('Capturing ' + parts.join(' + ')) : 'Waiting for capture';
+        if (parts.length) {
+          captureLabel.textContent = 'Capture Active (' + parts.join(' + ') + ')';
+        } else if (state === 'starting') {
+          captureLabel.textContent = 'Capture Initializing';
+        } else {
+          captureLabel.textContent = 'Client Connected: Waiting for capture';
+        }
       }
     }
     if (capsLabel) {

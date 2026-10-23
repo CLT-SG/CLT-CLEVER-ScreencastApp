@@ -2,6 +2,7 @@
 (function () {
   const peers = new Map()
   const remoteAudio = new Map()
+  const offerChains = new Map()
   let config = {
     systemAudio: false,
     microphone: false,
@@ -239,6 +240,7 @@
       try { pc.close() } catch (err) { /* ignore */ }
       peers.delete(clientId)
     }
+    offerChains.delete(clientId)
     const el = remoteAudio.get(clientId)
     if (el) {
       el.srcObject = null
@@ -322,21 +324,43 @@
     await applySenderBitrate(pc)
   }
 
-  async function handleOffer(clientId, sdp) {
+  function queueOffer(clientId, sdp, offerId) {
+    const prev = offerChains.get(clientId) || Promise.resolve()
+    const next = prev.catch(() => {}).then(() => handleOffer(clientId, sdp, offerId))
+    offerChains.set(clientId, next)
+    return next
+  }
+
+  async function handleOffer(clientId, sdp, offerId) {
     reportStatus('starting')
-    const pc = await ensurePeer(clientId)
+    let pc = peers.get(clientId)
+    // A second offer while mid-handshake (common with 3 Video Wall slots)
+    // must replace the peer; applying another remote offer in have-remote-offer
+    // or answering twice leaves viewers in signalingState "stable" with stale SDP.
+    if (pc && pc.signalingState !== 'stable') {
+      log('warn', 'replacing peer ' + clientId + ' for new offer (was ' + pc.signalingState + ')')
+      closePeer(clientId)
+      pc = null
+    }
+    pc = await ensurePeer(clientId)
     await pc.setRemoteDescription({ type: 'offer', sdp })
     await addLocalTracks(pc)
     if (!config.systemAudio && !config.microphone && !config.twoWayAudio) {
-      pc.addTransceiver('audio', { direction: 'recvonly' })
+      if (!pc.getTransceivers().length) {
+        pc.addTransceiver('audio', { direction: 'recvonly' })
+      }
     }
     const answer = await pc.createAnswer()
     answer.sdp = preferOpus(answer.sdp)
     await pc.setLocalDescription(answer)
+    const message = { type: 'answer', sdp: pc.localDescription.sdp }
+    if (offerId != null) {
+      message.offerId = offerId
+    }
     send({
       type: 'signal',
       clientId,
-      message: { type: 'answer', sdp: pc.localDescription.sdp }
+      message
     })
   }
 
@@ -350,7 +374,12 @@
     }
   }
 
-  async function handleControl(message) {
+  async function handleControl(clientId, message) {
+    const prev = {
+      systemAudio: config.systemAudio,
+      microphone: config.microphone,
+      twoWayAudio: config.twoWayAudio
+    }
     config = Object.assign({}, config, {
       systemAudio: message.systemAudio != null ? !!message.systemAudio : config.systemAudio,
       microphone: message.microphone != null ? !!message.microphone : config.microphone,
@@ -368,11 +397,21 @@
     remoteAudio.forEach((el) => {
       el.muted = !config.speakerOutput && !config.twoWayAudio
     })
-    for (const [clientId, pc] of peers) {
+    const captureChanged = prev.systemAudio !== config.systemAudio ||
+      prev.microphone !== config.microphone ||
+      prev.twoWayAudio !== config.twoWayAudio
+    // Only renegotiate the client that sent control. Broadcasting renegotiate
+    // to every Video Wall slot caused duplicate answers → stable-state errors.
+    const targets = captureChanged
+      ? Array.from(peers.keys())
+      : (clientId && peers.has(clientId) ? [clientId] : [])
+    for (const id of targets) {
+      const pc = peers.get(id)
+      if (!pc) continue
       await addLocalTracks(pc)
       send({
         type: 'signal',
-        clientId,
+        clientId: id,
         message: { type: 'renegotiate' }
       })
     }
@@ -407,7 +446,7 @@
       const message = event.message || {}
       if (message.type === 'offer') {
         try {
-          await handleOffer(event.clientId, message.sdp)
+          await queueOffer(event.clientId, message.sdp, message.offerId)
         } catch (err) {
           log('error', 'offer failed: ' + err.message)
           reportStatus('error', { error: err.message })
@@ -424,7 +463,7 @@
         return
       }
       if (message.type === 'control') {
-        await handleControl(message)
+        await handleControl(event.clientId, message)
       }
     }
   }

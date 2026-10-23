@@ -27,9 +27,9 @@ desktops; encoder KVM boxes continue to publish RTSP that MediaMTX pulls
 
 Automatic recovery after an RTSP camera / KVM-ENC restart is handled by:
 
-- **CLEVER-Service** — MediaMTX path lifecycle and stale-source force-replace
-- **CLEVER-node** — WHEP session recreate, stall detection, UI reconnect states
-- **CLEVER-Player** — hosts the webview only (no full-window reload required)
+- **CLEVER-Service** MediaMTX path lifecycle and stale-source force-replace
+- **CLEVER-node** WHEP session recreate, stall detection, UI reconnect states
+- **CLEVER-Player** hosts the webview only (no full-window reload required)
 
 ScreencastApp must not be restarted or reconfigured for RTSP recovery. Leave
 unrelated VNC sessions alone when encoder RTSP paths recover.

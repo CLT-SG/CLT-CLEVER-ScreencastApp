@@ -17,9 +17,9 @@ The dashboard **displays** the existing connection, monitor, VNC, and audio serv
 
 ## Connection options
 
-1. **IP address** — `192.168.1.100:5900`
-2. **Short hostname** — `USER-PC:5900`
-3. **FQDN** — `USER-PC.local:5900`
+1. **IP address** `192.168.1.100:5900`
+2. **Short hostname** `USER-PC:5900`
+3. **FQDN** `USER-PC.local:5900`
 
 ## Requirements
 
@@ -49,13 +49,13 @@ npm test
 
 ## Project structure
 
-- `index.js` — Electron main process
-- `lib/` — CLEVER-Service connection, discovery, registration, monitors, updater, WebRTC audio
-- `src/index.html` / `src/renderer.js` / `src/assets/css/style.css` — dashboard UI
-- `src/audio-engine.js` — hidden Chromium capture/encode engine
-- `preload.js` — context-isolated IPC bridge
-- `websockify.js` / `server.js` — WebSocket-to-VNC bridge (audio signaling shares the HTTPS port on `/audio`)
-- `.github/workflows/` — CI and multi-platform release
+- `index.js` Electron main process
+- `lib/` CLEVER-Service connection, discovery, registration, monitors, updater, WebRTC audio
+- `src/index.html` / `src/renderer.js` / `src/assets/css/style.css` dashboard UI
+- `src/audio-engine.js` hidden Chromium capture/encode engine
+- `preload.js` context-isolated IPC bridge
+- `websockify.js` / `server.js` WebSocket-to-VNC bridge (audio signaling shares the HTTPS port on `/audio`)
+- `.github/workflows/` CI and multi-platform release
 
 ## Troubleshooting
 
