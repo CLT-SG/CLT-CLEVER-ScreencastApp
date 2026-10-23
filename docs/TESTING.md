@@ -9,6 +9,21 @@ New coverage:
 | [`test/updater.test.js`](../test/updater.test.js) | Check / no-update / download / ready / failure / unpackaged / delayed auto-check / Linux AppImage + `.deb` install / exit 127 mapping / package validation |
 | [`test/dashboard-state.test.js`](../test/dashboard-state.test.js) | Dashboard mapping of connection, updater, monitors, VNC, timestamps, multi-server discovery |
 | [`test/version.test.js`](../test/version.test.js) | GitHub publish config and release workflow matrix |
+| [`test/audio.test.js`](../test/audio.test.js) | Audio config defaults, capture only with clients, capabilities, registration transport |
+| [`test/layout.test.js`](../test/layout.test.js) | Screencast Status inside Device; Audio + Screencast details panels; status copy |
+
+## Manual end-to-end audio (system / desktop loopback)
+
+Hardware-dependent; not fully covered by unit tests.
+
+1. Start ScreencastApp on a supported OS (Windows loopback, Linux Pulse/PipeWire monitor, or macOS with BlackHole).
+2. Confirm device registration with CLEVER-Service succeeds.
+3. Enable **System Audio** in ScreencastApp; status should show **Audio Enabled — Waiting for Client**.
+4. In CLEVER-Service `/screencasts`, enable **Audio Stream** for the matching Screencast VNC source and save.
+5. Open the source in an authorized CLEVER-Player VNC previewer (Video Wall or Console).
+6. Confirm ScreencastApp **Clients ≥ 1** and **Capture Active**; play a known test tone on the remote PC and hear it in the player.
+7. Disconnect / reconnect the viewer; confirm audio restores without restarting VNC.
+8. Disable Audio Stream; confirm new sessions do not auto-subscribe and resources clean up when the last client leaves.
 
 ```bash
 npm test

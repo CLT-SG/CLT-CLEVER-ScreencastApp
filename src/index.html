@@ -54,6 +54,28 @@
           <dd><span id="device-id" class="copy-value" title="Click to copy">-</span></dd>
         </div>
       </dl>
+      <div class="panel-subheader">
+        <h3>Screencast Status</h3>
+        <span class="badge tone-neutral" id="vnc-sharing-badge">Idle</span>
+      </div>
+      <dl class="meta-grid compact" id="screencast-status-grid">
+        <div>
+          <dt>Websockify</dt>
+          <dd id="ws-port-label">8840</dd>
+        </div>
+        <div>
+          <dt>WebSocket path</dt>
+          <dd id="ws-path-label">/screen0</dd>
+        </div>
+        <div>
+          <dt>Active source</dt>
+          <dd id="vnc-source-label">Scanning…</dd>
+        </div>
+        <div>
+          <dt>Sharing</dt>
+          <dd id="vnc-sharing-label">Idle</dd>
+        </div>
+      </dl>
     </section>
 
     <section class="panel" id="service-connection-card">
@@ -141,27 +163,8 @@
 
     <section class="panel" id="vnc-panel">
       <div class="panel-header">
-        <h2>Screencast</h2>
-        <span class="badge tone-neutral" id="vnc-sharing-badge">Idle</span>
+        <h2>Screencast details</h2>
       </div>
-      <dl class="meta-grid compact">
-        <!--<div>
-          <dt>VNC port</dt>
-          <dd id="vnc-port-label">5900</dd>
-        </div>-->
-        <div>
-          <dt>Websockify</dt>
-          <dd id="ws-port-label">8840</dd>
-        </div>
-        <div>
-          <dt>WebSocket path</dt>
-          <dd id="ws-path-label">/screen0</dd>
-        </div>
-        <div>
-          <dt>Active source</dt>
-          <dd id="vnc-source-label">Scanning…</dd>
-        </div>
-      </dl>
       <div id="vnc-ports-info" class="table-wrap">
         <div class="loading-spinner">
           <div class="spinner"></div>
@@ -178,7 +181,6 @@
           <span id="audio-status-label">Disabled</span>
         </div>
       </div>
-      <!--<p class="audio-help muted">Optional WebRTC audio is independent from VNC. Capture starts only when a remote client is connected and a control below is enabled.</p>-->
       <div class="audio-controls settings-row">
         <label class="setup">
           <input type="checkbox" id="audio-system" checked>
@@ -205,6 +207,10 @@
         <div>
           <dt>Capture</dt>
           <dd id="audio-capture-label">Idle</dd>
+        </div>
+        <div>
+          <dt>Clients</dt>
+          <dd id="audio-clients-label">0</dd>
         </div>
         <div>
           <dt>Capabilities</dt>

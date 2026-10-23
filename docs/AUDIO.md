@@ -68,10 +68,21 @@ Logs are written to `~/clevervnc-log/` with an `[audio]` prefix.
 | Symptom | Check |
 | --- | --- |
 | Status stays Disabled | Enable System Audio or Microphone in the Audio panel |
+| Status stays Waiting for Client | Open the source in CLEVER-Player with Audio Stream enabled under `/screencasts` (`audio_system=1`). VNC alone (`/screen0`) does not register an audio client |
 | Status Error, VNC still works | Expected. Read the error line; VNC is independent |
 | macOS has no system audio | Install BlackHole (or similar) and restart |
-| Player cannot hear audio | Confirm a client is connected to `/audio`, not only to `/screen0` |
+| Player cannot hear audio | Confirm Clients > 0 and Capture Active; confirm `wss://host:wsPort/audio` is reachable |
 | Remote voice not injected | No virtual cable detected; playback uses the default speakers |
+
+## End-to-end viewer path
+
+1. Enable **System Audio** in ScreencastApp (host policy).
+2. In CLEVER-Service `/screencasts`, enable **Audio Stream** for the Screencast VNC source (`has_audio`).
+3. Open the source in CLEVER-Player Video Wall or Console.
+4. noVNC receives `audio=1&audio_system=1` and auto-registers on `/audio`.
+5. ScreencastApp shows **Clients ≥ 1** and **Capture Active**; desktop audio plays in the viewer.
+
+Capture still starts only while a remote `/audio` client is connected. Disabling Audio Stream removes `audio_system=1` so new viewers do not auto-subscribe (Settings can still enable audio manually when `audio=1` is present).
 
 ## Reconnection
 
