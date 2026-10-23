@@ -43,6 +43,17 @@ test('windows reports system audio; macOS needs a loopback device', () => {
   assert.equal(inject.microphone_injection, true)
 })
 
+test('audio signaling source rejects clients when sharing is stopped', () => {
+  const fs = require('fs')
+  const path = require('path')
+  const signaling = fs.readFileSync(path.join(__dirname, '../lib/audio-signaling.js'), 'utf8')
+  const bridge = fs.readFileSync(path.join(__dirname, '../lib/audio-bridge.js'), 'utf8')
+  assert.match(signaling, /opts\.accepting/)
+  assert.match(signaling, /Sharing stopped/)
+  assert.match(bridge, /setAcceptingClients/)
+  assert.match(bridge, /disconnectClients/)
+})
+
 test('addClient always emits status so Clients count updates', () => {
   const session = new AudioSession({
     config: { systemAudio: true },

@@ -6,6 +6,7 @@ const { mdnsHostname } = require('./lib/host-names');
 const { createRoutedServer, isAudioPath } = require('./lib/ws-router');
 const { isLoopbackDisabledReason } = require('./lib/vnc-scan');
 const { isViewOnlyRequest, filterClientPayload } = require('./lib/rfb-view-only');
+const { isSharingEnabled, setSharingEnabled, closeWebSocketClients } = require('./lib/vnc-share');
 
 const attached = new WeakMap()
 
@@ -157,7 +158,9 @@ function websockify(server, targets) {
 
   let wss = attached.get(server)
   if (!wss) {
-    wss = createRoutedServer(server, matchVncPath, {}, log)
+    // Track clients so Stop Sharing / Quit can drop Video Wall viewers.
+    wss = createRoutedServer(server, matchVncPath, { clientTracking: true }, log)
+    wss.sharingEnabled = true
     attached.set(server, wss)
     wss.on('connection', function connection(ws, req) {
       const pathname = url.parse(req.url).pathname
@@ -166,6 +169,16 @@ function websockify(server, targets) {
         'unknown'
       const currentTargets = wss.vncTargets || []
       log.info(`Remote WebSocket client ${remote} requested ${pathname}`)
+
+      if (!isSharingEnabled(wss)) {
+        log.warn(`Rejected remote client ${remote}: sharing is stopped (${pathname})`)
+        try {
+          ws.close(1008, 'Sharing stopped')
+        } catch (err) {
+          try { ws.terminate() } catch (termErr) { /* ignore */ }
+        }
+        return
+      }
 
       let matchingTarget = currentTargets.find(t => pathname === t.path)
 
@@ -212,7 +225,12 @@ function websockify(server, targets) {
   })
 
   log.info('Websockify initialized successfully')
+  wss.setSharingEnabled = (enabled) => setSharingEnabled(wss, enabled)
+  wss.disconnectAll = (code, reason) => closeWebSocketClients(wss, code, reason)
   return wss
 }
 
 module.exports = websockify
+module.exports.isSharingEnabled = isSharingEnabled
+module.exports.setSharingEnabled = setSharingEnabled
+module.exports.closeWebSocketClients = closeWebSocketClients

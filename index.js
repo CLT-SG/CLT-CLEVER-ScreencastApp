@@ -35,6 +35,7 @@ const { createUpdater } = require('./lib/updater')
 const { createAssetLoader } = require('./lib/assets')
 const { createStatusHandler } = require('./lib/http-status')
 const { createStartupWindowPolicy } = require('./lib/startup-window')
+const { setSharingEnabled } = require('./lib/vnc-share')
 
 // Configure logging
 var log = require('electron-log')
@@ -44,6 +45,7 @@ var ipaddress
 var hostname = os.hostname()
 var hostnameLocal = mdnsHostname(hostname)
 var publishedVncTargets = []
+var vncShareServer = null
 var serverBindAddress = (config.server && config.server.bindAddress) || '0.0.0.0'
 var serverListenPort = config.server?.port || 8840
 
@@ -255,12 +257,86 @@ function showMainWindow() {
   log.info('[Window] Main window shown from tray/request')
 }
 
-function hideMainWindowToTray() {
+/**
+ * Closing the dashboard only hides to the tray. Websockify on :8840 keeps
+ * serving Video Wall / Console until Stop Sharing or Quit.
+ */
+function hideMainWindowToTray(options) {
+  const opts = options || {}
   if (!win || win.isDestroyed()) {
     return
   }
-  // Hide only never quit or tear down background services.
   win.hide()
+  if (opts.notifyContinuing && appIcon) {
+    try {
+      appIcon.displayBalloon({
+        title: 'Screencast still running',
+        content: 'Window closed — sharing continues in the background. ' +
+          'Use tray Stop Sharing or Quit to disconnect Video Wall / Console.',
+        iconType: 'info'
+      })
+    } catch (err) {
+      log.warn(`[Window] Tray balloon failed: ${err.message}`)
+    }
+  }
+  if (opts.notifyContinuing) {
+    log.info('[Window] Hidden to tray; remote sharing still active until Stop Sharing or Quit')
+  }
+}
+
+/**
+ * Gate remote VNC + audio viewers. Stop Sharing / Quit must disconnect clients;
+ * Start Sharing re-opens the gate without restarting HTTPS.
+ */
+function setRemoteSharing(enabled, options) {
+  const opts = options || {}
+  const next = !!enabled
+  isSharing = next
+  setSharingEnabled(vncShareServer, next)
+  if (audioBridge) {
+    audioBridge.setAcceptingClients(next)
+  }
+  if (connectionManager && opts.notifyService !== false) {
+    connectionManager.notifySharing(next)
+  }
+  log.info(`[Sharing] Remote sharing ${next ? 'enabled' : 'stopped'}` +
+    (opts.reason ? ` (${opts.reason})` : ''))
+  return next
+}
+
+function shutdownRemoteServices(reason) {
+  log.info(`[Shutdown] Tearing down remote services (${reason || 'quit'})`)
+  setRemoteSharing(false, { reason: reason || 'quit', notifyService: true })
+  if (audioBridge) {
+    try {
+      audioBridge.stop()
+    } catch (err) {
+      log.warn(`[Shutdown] audioBridge.stop failed: ${err.message}`)
+    }
+  }
+  if (connectionManager) {
+    try {
+      connectionManager.stop()
+    } catch (err) {
+      log.warn(`[Shutdown] connectionManager.stop failed: ${err.message}`)
+    }
+  }
+  if (updater) {
+    try {
+      updater.stop()
+    } catch (err) {
+      log.warn(`[Shutdown] updater.stop failed: ${err.message}`)
+    }
+  }
+  try {
+    if (server && typeof server.close === 'function') {
+      server.close(() => {
+        log.info('[Shutdown] HTTPS / websockify server closed')
+      })
+    }
+  } catch (err) {
+    log.warn(`[Shutdown] server.close failed: ${err.message}`)
+  }
 }
 
 const vncport = (process.platform == 'linux') ? '5900' : '5900'
@@ -666,6 +742,7 @@ try {
             }
             appIcon.setToolTip('Screencast & VNC is running')
             updateTrayMenu(true);
+            setRemoteSharing(true, { reason: 'start-sharing', notifyService: false })
             if (connectionManager) {
               connectionManager.notifySharing(true)
             }
@@ -682,12 +759,14 @@ try {
             }
             appIcon.setToolTip('Screencast & VNC is not sharing')
             updateTrayMenu(false);
+            // Actually drop Video Wall / Console websockets (was UI-only before).
+            setRemoteSharing(false, { reason: 'stop-sharing', notifyService: false })
             if (connectionManager) {
               connectionManager.notifySharing(false)
             }
             appIcon.displayBalloon({
               title: titlenotif,
-              content: 'Screencast & VNC has stopped sharing',
+              content: 'Screencast & VNC has stopped sharing — remote viewers disconnected',
               iconType: 'warning'
             })
           }
@@ -710,7 +789,8 @@ try {
       })
       
       ipcMain.handle('close-window', () => {
-        hideMainWindowToTray()
+        // Dashboard X only hides; websockify keeps serving until Stop/Quit.
+        hideMainWindowToTray({ notifyContinuing: true })
       })
       
       ipcMain.handle('open-about', async () => {
@@ -864,11 +944,11 @@ try {
       // Set up auto reload based on config
       setupAutoReload(config.autorestart)
 
-      // Window events close/minimize hide to tray; Quit menu exits the app.
+      // Window close/minimize hide to tray (sharing stays up). Tray Quit exits.
       win.on('close', (event) => {
         if (!app.isQuiting) {
           event.preventDefault()
-          hideMainWindowToTray()
+          hideMainWindowToTray({ notifyContinuing: true })
           return false
         }
         return true
@@ -907,15 +987,8 @@ try {
       })
 
       app.on('before-quit', () => {
-        if (audioBridge) {
-          audioBridge.stop()
-        }
-        if (connectionManager) {
-          connectionManager.stop()
-        }
-        if (updater) {
-          updater.stop()
-        }
+        app.isQuiting = true
+        shutdownRemoteServices('before-quit')
       })
 
       // Check VNC status and open window
@@ -968,7 +1041,9 @@ async function publishVncTargets() {
     if (availablePorts.length > 0) {
       log.info(`Available ports: ${availablePorts.map(p => p.path + ' -> ' + p.target).join(', ')}`)
       log.info('Screen endpoints: ' + availablePorts.map((item) => item.path).join(', '))
-      websockify(server, availablePorts)
+      vncShareServer = websockify(server, availablePorts)
+      // Keep accepting viewers until Stop Sharing / Quit (matches prior always-on).
+      setSharingEnabled(vncShareServer, true)
     } else {
       log.warn('No VNC ports available')
     }
