@@ -11,3 +11,7 @@ ScreencastApp remains the device agent for discovery, heartbeat, VNC/audio sessi
 ## Status surface
 
 Prefer existing heartbeat / session fields already consumed by CLEVER-Service and CLEVER-node. New operator UI should reuse those fields rather than inventing parallel connection state machines in the renderer.
+
+## Content interaction lock
+
+Console/Video Wall layout editing shields pointer input in the CLEVER-Service preview UI. ScreencastApp sessions must not be paused, disconnected, or reconfigured merely to prevent accidental remote-desktop clicks during slot drag/resize.
