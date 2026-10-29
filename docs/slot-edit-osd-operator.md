@@ -15,3 +15,7 @@ Prefer existing heartbeat / session fields already consumed by CLEVER-Service an
 ## Content interaction lock
 
 Console/Video Wall layout editing shields pointer input in the CLEVER-Service preview UI. ScreencastApp sessions must not be paused, disconnected, or reconfigured merely to prevent accidental remote-desktop clicks during slot drag/resize.
+
+## Push to Video Wall
+
+Selected-content and full-layout Console pushes are Service/Player workflows. ScreencastApp is unchanged: it continues to provide the source device/session that may already be assigned to a Console slot. Do not add destination Video Wall selection or resolution filtering here.
